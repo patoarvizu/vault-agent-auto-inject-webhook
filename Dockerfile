@@ -8,6 +8,21 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /vault-agent-auto-inject-w
 
 FROM alpine:3.9
 
+ARG GIT_COMMIT="unspecified"
+LABEL GIT_COMMIT=$GIT_COMMIT
+
+ARG GIT_TAG=""
+LABEL GIT_TAG=$GIT_TAG
+
+ARG COMMIT_TIMESTAMP="unspecified"
+LABEL COMMIT_TIMESTAMP=$COMMIT_TIMESTAMP
+
+ARG AUTHOR_EMAIL="unspecified"
+LABEL AUTHOR_EMAIL=$AUTHOR_EMAIL
+
+ARG SIGNATURE_KEY="undefined"
+LABEL SIGNATURE_KEY=$SIGNATURE_KEY
+
 RUN apk update && apk add ca-certificates
 
 COPY --from=builder /vault-agent-auto-inject-webhook /

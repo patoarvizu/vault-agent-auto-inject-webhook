@@ -39,7 +39,8 @@ jobs:
             notary -s https://notary.docker.io -d ~/.docker/trust key import ${HOME}/vault-agent-auto-inject-webhook-circleci.key --role vault-agent-auto-inject-webhook-circleci
             export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$NOTARY_DELEGATION_PASSPHRASE
             go mod vendor
-            docker build -t patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1 .
+            DOCKER_BUILD_ARGS="--build-arg GIT_COMMIT=$CIRCLE_SHA1 --build-arg GIT_TAG=$CIRCLE_TAG --build-arg COMMIT_TIMESTAMP=$(git log -1 --format=%at) --build-arg AUTHOR_EMAIL=$(git log -1 --format=%ae) --build-arg SIGNATURE_KEY=$(git log -1 --format=%GK)"
+            docker build $DOCKER_BUILD_ARGS -t patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1 .
             export DOCKER_CONTENT_TRUST=1
             VERSION=${CIRCLE_TAG:-latest}
             docker tag patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1 patoarvizu/vault-agent-auto-inject-webhook:latest
@@ -54,7 +55,7 @@ jobs:
 
 workflows:
   version: 2
-  build-operator:
+  build-webhook:
     jobs:
       - build:
           filters:
