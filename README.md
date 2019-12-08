@@ -1,5 +1,23 @@
 # Vault agent auto-inject webhook
 
+![CircleCI](https://img.shields.io/circleci/build/github/patoarvizu/vault-agent-auto-inject-webhook.svg?label=CircleCI) ![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/patoarvizu/vault-agent-auto-inject-webhook.svg) ![Docker Pulls](https://img.shields.io/docker/pulls/patoarvizu/vault-agent-auto-inject-webhook.svg) ![Keybase BTC](https://img.shields.io/keybase/btc/patoarvizu.svg) ![Keybase PGP](https://img.shields.io/keybase/pgp/patoarvizu.svg) ![GitHub](https://img.shields.io/github/license/patoarvizu/vault-agent-auto-inject-webhook.svg)
+
+<!-- TOC -->
+
+- [Vault agent auto-inject webhook](#vault-agent-auto-inject-webhook)
+    - [Intro](#intro)
+        - [Running the webhook](#running-the-webhook)
+        - [Configuring the webhook](#configuring-the-webhook)
+        - [Webhook command-line flags](#webhook-command-line-flags)
+        - [ConfigMap](#configmap)
+        - [Init containers](#init-containers)
+    - [For security nerds](#for-security-nerds)
+        - [Docker images are signed and published to Docker Hub's Notary server](#docker-images-are-signed-and-published-to-docker-hubs-notary-server)
+        - [Docker images are labeled with Git and GPG metadata](#docker-images-are-labeled-with-git-and-gpg-metadata)
+    - [Help wanted!](#help-wanted)
+
+<!-- /TOC -->
+
 ## Intro
 
 This webhook is a companion to the [`vault-dynamic-configuration-operator`](https://github.com/patoarvizu/vault-dynamic-configuration-operator) but it can be deployed indepentendly as a Kubernetes [Mutating Webhook](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/), that can modify Pods to automatically inject a Vault agent sidecar, including a rendered configuration template taken from a `ConfigMap` corresponding to the service's identity, as well as modify the environment variables on all containers in the Pod to inject a `VAULT_ADDR` environment variable that points to the sidecar agent. To do this, annotate your workload (`Deployment`, `StatefulSet`, `DaemonSet`, etc.) with `vault.patoarvizu.dev/agent-auto-inject: sidecar` to have the webhook modify the generated Pods as they are created.
@@ -99,10 +117,42 @@ Environment variable | Value
 `TARGET_VAULT_ADDRESS` | The value of the `-target-vault-address` parameter (or its default)
 `KUBERNETES_AUTH_PATH` | The value of the `-kubernetes-auth-path` parameter (or its default)
 
-## Init containers
+### Init containers
 
 Alternatively, the webhook can inject the Vault agent as an init container instead of a sidecar, which is useful for short-lived workloads, like `Job`s and `CronJob`s. In that case, the init container should use a configuration that has `exit_after_auth = true` so the init container exists after authenticating and doesn't remain long-lived. Doing so, would cause the container to never exit past the init container phase. The config file should also contain at least one [file sink](https://www.vaultproject.io/docs/agent/autoauth/sinks/file.html). The webhook will also modify the containers to mount an additional volume on `/vault-agent` that can be used as a file sink.
 
 To do this, annotate your workload with `vault.patoarvizu.dev/agent-auto-inject: init-container`.
 
 Usually, a given config file will only be suitable for either long-lived sidecars or short-lived init containers. If the default config map (`vault-agent-config` by default, or the overwrite if `-default-config-map-name` was provided) is not suitable for a specific application, it can be overwritten with the `vault.patoarvizu.dev/agent-config-map` annotation. If set, the value should be the name of a `ConfigMap` in the same namespace that that the webhook should use to inject, instead of the default one.
+
+## For security nerds
+
+### Docker images are signed and published to Docker Hub's Notary server
+
+The [Notary](https://github.com/theupdateframework/notary) project is a CNCF incubating project that aims to provide trust and security to software distribution. Docker Hub runs a Notary server at https://notary.docker.io for the repositories it hosts.
+
+[Docker Content Trust](https://docs.docker.com/engine/security/trust/content_trust/) is the mechanism used to verify digital signatures and enforce security by adding a validating layer.
+
+You can inspect the signed tags for this project by doing `docker trust inspect --pretty docker.io/patoarvizu/vault-agent-auto-inject-webhook`, or (if you already have `notary` installed) `notary -d ~/.docker/trust/ -s https://notary.docker.io list docker.io/patoarvizu/vault-agent-auto-inject-webhook`.
+
+If you run `docker pull` with `DOCKER_CONTENT_TRUST=1`, the Docker client will only pull images that come from registries that have a Notary server attached (like Docker Hub).
+
+### Docker images are labeled with Git and GPG metadata
+
+In addition to the digital validation done by Docker on the image itself, you can do your own human validation by making sure the image's content matches the Git commit information (including tags if there are any) and that the GPG signature on the commit matches the key on the commit on github.com.
+
+For example, if you run `docker pull patoarvizu/vault-agent-auto-inject-webhook:c1201e30e90d9d8fd2f2f65f2552236013cdcbe8` to pull the image tagged with that commit id, then run `docker inspect patoarvizu/vault-agent-auto-inject-webhook:c1201e30e90d9d8fd2f2f65f2552236013cdcbe8 | jq -r '.[0].ContainerConfig.Labels'` (assuming you have [jq](https://stedolan.github.io/jq/) installed) you should see that the `GIT_COMMIT` label matches the tag on the image. Furthermore, if you go to https://github.com/patoarvizu/vault-agent-auto-inject-webhook/commit/c1201e30e90d9d8fd2f2f65f2552236013cdcbe8 (notice the matching commit id), and click on the **Verified** button, you should be able to confirm that the GPG key ID used to match this commit matches the value of the `SIGNATURE_KEY` label, and that the key belongs to the `AUTHOR_EMAIL` label. When an image belongs to a commit that was tagged, it'll also include a `GIT_TAG` label, to further validate that the image matches the content.
+
+Keep in mind that this isn't tamper-proof. A malicious actor with access to publish images can create one with malicious content but with values for the labels matching those of a valid commit id. However, when combined with Docker Content Trust, the certainty of using a legitimate image is increased because the chances of a bad actor having both the credentials for publishing images, as well as Notary signing credentials are significantly lower and even in that scenario, compromised signing keys can be revoked or rotated.
+
+Here's the list of included Docker labels:
+
+- `AUTHOR_EMAIL`
+- `COMMIT_TIMESTAMP`
+- `GIT_COMMIT`
+- `GIT_TAG`
+- `SIGNATURE_KEY`
+
+## Help wanted!
+
+All Issues or PRs on this repo are welcome, even if it's for a typo or an open-ended question.
