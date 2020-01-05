@@ -35,7 +35,7 @@ kind: Deployment
         - name: vault-agent-auto-inject-webhook
           image: patoarvizu/vault-agent-auto-inject-webhook:latest
           command:
-          - /vault-dynamic-configuration-webhook
+          - /vault-agent-auto-inject-webhook
           - -tls-cert-file
           - /tls/tls.crt
           - -tls-key-file
