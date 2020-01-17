@@ -42,6 +42,19 @@ type webhookCfg struct {
 var cfg = &webhookCfg{}
 var injectionMode string
 
+func getServiceAccountMount(containers []corev1.Container) (serviceAccountMount corev1.VolumeMount) {
+mountSearch:
+	for _, container := range containers {
+		for _, mount := range container.VolumeMounts {
+			if mount.MountPath == "/var/run/secrets/kubernetes.io/serviceaccount" {
+				serviceAccountMount = mount
+				break mountSearch
+			}
+		}
+	}
+	return serviceAccountMount
+}
+
 func injectVaultSidecar(_ context.Context, obj metav1.Object) (bool, error) {
 	logger := &log.Std{}
 	pod, ok := obj.(*corev1.Pod)
@@ -67,7 +80,7 @@ func injectVaultSidecar(_ context.Context, obj metav1.Object) (bool, error) {
 	if val, ok := pod.Annotations[fmt.Sprintf("%s/%s", cfg.annotationPrefix, configMapOverrideAnnotation)]; ok && val != "" {
 		configMapName = val
 	}
-
+	serviceAccountMount := getServiceAccountMount(pod.Spec.Containers)
 	logger.Infof("Injecting Vault sidecar into pod with service account %s", pod.Spec.ServiceAccountName)
 	for i, c := range pod.Spec.Containers {
 		if injectionMode == initContainerInjectionMode {
@@ -79,7 +92,7 @@ func injectVaultSidecar(_ context.Context, obj metav1.Object) (bool, error) {
 			found := false
 			for _, e := range c.Env {
 				if e.Name == "VAULT_ADDR" {
-					e.Value = "http://localhost:8200"
+					e.Value = "http://127.0.0.1:8200"
 					found = true
 				}
 			}
@@ -172,6 +185,7 @@ func injectVaultSidecar(_ context.Context, obj metav1.Object) (bool, error) {
 					Name:      "vault-config",
 					MountPath: "/etc/vault",
 				},
+				serviceAccountMount,
 			},
 			Resources: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
@@ -201,6 +215,7 @@ func injectVaultSidecar(_ context.Context, obj metav1.Object) (bool, error) {
 					Name:      vaultAgentVolumeMountName,
 					MountPath: vaultAgentVolumeMountPath,
 				},
+				serviceAccountMount,
 			},
 			Resources: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
