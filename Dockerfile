@@ -6,7 +6,7 @@ WORKDIR /go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook/
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /vault-agent-auto-inject-webhook /go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook/cmd/webhook.go
 
-FROM alpine:3.9
+FROM alpine:3.11.3
 
 ARG GIT_COMMIT="unspecified"
 LABEL GIT_COMMIT=$GIT_COMMIT
