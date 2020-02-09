@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  snyk: snyk/snyk@0.0.8
+
 jobs:
   build:
     machine:
@@ -31,6 +34,16 @@ jobs:
             chmod +x notary
             sudo mv notary /usr/local/bin
       - run:
+          name: Build image
+          command: |
+            go mod vendor
+            docker build -t patoarvizu/vault-agent-auto-inject-webhook:latest .
+      - snyk/scan:
+          docker-image-name: patoarvizu/vault-agent-auto-inject-webhook:latest
+          fail-on-issues: true
+          project: patoarvizu/vault-agent-auto-inject-webhook
+          severity-threshold: low
+      - run:
           name: Build webhook
           command: |
             docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
@@ -38,7 +51,6 @@ jobs:
             export NOTARY_DELEGATION_PASSPHRASE=$NOTARY_ROLE_PASSPHRASE
             notary -s https://notary.docker.io -d ~/.docker/trust key import ${HOME}/vault-agent-auto-inject-webhook-circleci.key --role vault-agent-auto-inject-webhook-circleci
             export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$NOTARY_DELEGATION_PASSPHRASE
-            go mod vendor
             DOCKER_BUILD_ARGS="--build-arg GIT_COMMIT=$CIRCLE_SHA1 --build-arg GIT_TAG=$CIRCLE_TAG --build-arg COMMIT_TIMESTAMP=$(git log -1 --format=%at) --build-arg AUTHOR_EMAIL=$(git log -1 --format=%ae) --build-arg SIGNATURE_KEY=$(git log -1 --format=%GK)"
             docker build $DOCKER_BUILD_ARGS -t patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1 .
             export DOCKER_CONTENT_TRUST=1
@@ -58,6 +70,7 @@ workflows:
   build-webhook:
     jobs:
       - build:
+          context: authentication-tokens
           filters:
             tags:
               only: /^v\d+\.\d+.\d+$/
