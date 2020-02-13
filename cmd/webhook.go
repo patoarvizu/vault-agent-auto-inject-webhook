@@ -32,6 +32,7 @@ type webhookCfg struct {
 	certFile             string
 	keyFile              string
 	addr                 string
+	metricsAddr          string
 	annotationPrefix     string
 	targetVaultAddress   string
 	kubernetesAuthPath   string
@@ -259,6 +260,7 @@ func main() {
 	fl.StringVar(&cfg.memoryRequest, "memory-request", "128Mi", "The amount of memory units to request for the Vault agent sidecar")
 	fl.StringVar(&cfg.memoryLimit, "memory-limit", "256Mi", "The amount of memory units to limit to on the Vault agent sidecar")
 	fl.StringVar(&cfg.addr, "listen-addr", ":4443", "The address to start the server")
+	fl.StringVar(&cfg.metricsAddr, "metrics-addr", ":8081", "The address where the Prometheus-style metrics are published")
 
 	fl.Parse(os.Args[1:])
 
@@ -287,7 +289,7 @@ func main() {
 	metricsError := make(chan error)
 	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 	go func() {
-		metricsError <- http.ListenAndServe(":8081", promHandler)
+		metricsError <- http.ListenAndServe(cfg.metricsAddr, promHandler)
 	}()
 	if <-webhookError != nil {
 		fmt.Fprintf(os.Stderr, "error serving webhook: %s", <-webhookError)
