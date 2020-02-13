@@ -106,6 +106,7 @@ Flag | Description | Default
 `-memory-request` | The amount of memory units to request for the Vault agent sidecar") | `128Mi`
 `-memory-limit` | The amount of memory units to limit to on the Vault agent sidecar") | `256Mi`
 `-listen-addr` | The address to start the server | `:4443`
+`-metrics-addr` | The address where the Prometheus-style metrics are published | `:8081`
 
 ### ConfigMap
 
