@@ -13,6 +13,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/slok/kubewebhook/pkg/observability/metrics"
 )
 
 const (
@@ -28,6 +32,7 @@ type webhookCfg struct {
 	certFile             string
 	keyFile              string
 	addr                 string
+	metricsAddr          string
 	annotationPrefix     string
 	targetVaultAddress   string
 	kubernetesAuthPath   string
@@ -255,6 +260,7 @@ func main() {
 	fl.StringVar(&cfg.memoryRequest, "memory-request", "128Mi", "The amount of memory units to request for the Vault agent sidecar")
 	fl.StringVar(&cfg.memoryLimit, "memory-limit", "256Mi", "The amount of memory units to limit to on the Vault agent sidecar")
 	fl.StringVar(&cfg.addr, "listen-addr", ":4443", "The address to start the server")
+	fl.StringVar(&cfg.metricsAddr, "metrics-addr", ":8081", "The address where the Prometheus-style metrics are published")
 
 	fl.Parse(os.Args[1:])
 
@@ -264,7 +270,9 @@ func main() {
 		Name: "vaultSidecarInjector",
 		Obj:  &corev1.Pod{},
 	}
-	wh, err := mutatingwh.NewWebhook(mcfg, pm, nil, nil, logger)
+	reg := prometheus.NewRegistry()
+	metricsRec := metrics.NewPrometheus(reg)
+	wh, err := mutatingwh.NewWebhook(mcfg, pm, nil, metricsRec, logger)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating webhook: %s", err)
 		os.Exit(1)
@@ -274,9 +282,21 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error creating webhook handler: %s", err)
 		os.Exit(1)
 	}
-	err = http.ListenAndServeTLS(cfg.addr, cfg.certFile, cfg.keyFile, whHandler)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error serving webhook: %s", err)
+	webhookError := make(chan error)
+	go func() {
+		webhookError <- http.ListenAndServeTLS(cfg.addr, cfg.certFile, cfg.keyFile, whHandler)
+	}()
+	metricsError := make(chan error)
+	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
+	go func() {
+		metricsError <- http.ListenAndServe(cfg.metricsAddr, promHandler)
+	}()
+	if <-webhookError != nil {
+		fmt.Fprintf(os.Stderr, "error serving webhook: %s", <-webhookError)
+		os.Exit(1)
+	}
+	if <-metricsError != nil {
+		fmt.Fprintf(os.Stderr, "error serving metrics: %s", <-metricsError)
 		os.Exit(1)
 	}
 }

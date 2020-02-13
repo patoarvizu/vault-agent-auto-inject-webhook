@@ -11,6 +11,7 @@
         - [Webhook command-line flags](#webhook-command-line-flags)
         - [ConfigMap](#configmap)
         - [Init containers](#init-containers)
+        - [Metrics](#metrics)
     - [For security nerds](#for-security-nerds)
         - [Docker images are signed and published to Docker Hub's Notary server](#docker-images-are-signed-and-published-to-docker-hubs-notary-server)
         - [Docker images are labeled with Git and GPG metadata](#docker-images-are-labeled-with-git-and-gpg-metadata)
@@ -106,6 +107,7 @@ Flag | Description | Default
 `-memory-request` | The amount of memory units to request for the Vault agent sidecar") | `128Mi`
 `-memory-limit` | The amount of memory units to limit to on the Vault agent sidecar") | `256Mi`
 `-listen-addr` | The address to start the server | `:4443`
+`-metrics-addr` | The address where the Prometheus-style metrics are published | `:8081`
 
 ### ConfigMap
 
@@ -124,6 +126,10 @@ Alternatively, the webhook can inject the Vault agent as an init container inste
 To do this, annotate your workload with `vault.patoarvizu.dev/agent-auto-inject: init-container`.
 
 Usually, a given config file will only be suitable for either long-lived sidecars or short-lived init containers. If the default config map (`vault-agent-config` by default, or the overwrite if `-default-config-map-name` was provided) is not suitable for a specific application, it can be overwritten with the `vault.patoarvizu.dev/agent-config-map` annotation. If set, the value should be the name of a `ConfigMap` in the same namespace that that the webhook should use to inject, instead of the default one.
+
+### Metrics
+
+The webhook will also expose Prometheus-style metrics on port HTTP/8081 (unless overwritten with `-metrics-addr`), ready to be scraped. The metrics are provided by the underlying [slok/kubewebhook](https://github.com/slok/kubewebhook) framework and include `admission_reviews_total`, `admission_review_errors_total`, and `admission_review_duration_seconds`.
 
 ## For security nerds
 
