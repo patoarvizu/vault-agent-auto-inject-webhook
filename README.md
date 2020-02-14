@@ -102,6 +102,8 @@ Flag | Description | Default
 `-kubernetes-auth-path` | Path to Vault Kubernetes auth endpoint | `auth/kubernetes`
 `-vault-image-version` | Tag on the 'vault' Docker image to inject with the sidecar | `1.3.0`
 `-default-config-map-name` | The name of the ConfigMap to be used for the Vault agent configuration by default, unless overwritten by annotation | `vault-agent-config`
+`-mount-ca-cert-secret` | Indicate if the Secret indicated by the -ca-cert-secret-name flag should be mounted on the Vault agent container | `false`
+`-ca-cert-secret-name` | The name of the secret in the target namespace to mount and use as a CA cert | `vault-tls`
 `-cpu-request` | The amount of CPU units to request for the Vault agent sidecar") | `50m`
 `-cpu-limit` | The amount of CPU units to limit to on the Vault agent sidecar") | `100m`
 `-memory-request` | The amount of memory units to request for the Vault agent sidecar") | `128Mi`
