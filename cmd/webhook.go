@@ -26,6 +26,7 @@ const (
 	configMapOverrideAnnotation = "agent-config-map"
 	vaultAgentVolumeMountName   = "vault-agent"
 	vaultAgentVolumeMountPath   = "/vault-agent"
+	caCertMountPath             = "/opt/vault/certs"
 )
 
 type webhookCfg struct {
@@ -42,6 +43,8 @@ type webhookCfg struct {
 	cpuLimit             string
 	memoryRequest        string
 	memoryLimit          string
+	mountCACertSecret    bool
+	caCertSecretName     string
 }
 
 var cfg = &webhookCfg{}
@@ -128,6 +131,23 @@ func injectVaultSidecar(_ context.Context, obj metav1.Object) (bool, error) {
 		},
 	)
 
+	if cfg.mountCACertSecret {
+		defaultMode := int32(0644)
+		optional := bool(true)
+		pod.Spec.Volumes = append(pod.Spec.Volumes,
+			corev1.Volume{
+				Name: cfg.caCertSecretName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName:  cfg.caCertSecretName,
+						Optional:    &optional,
+						DefaultMode: &defaultMode,
+					},
+				},
+			},
+		)
+	}
+
 	if injectionMode == initContainerInjectionMode {
 		pod.Spec.Volumes = append(pod.Spec.Volumes,
 			corev1.Volume{
@@ -177,6 +197,21 @@ func injectVaultSidecar(_ context.Context, obj metav1.Object) (bool, error) {
 		},
 	})
 
+	caCertVolumeMount := corev1.VolumeMount{
+		Name:      cfg.caCertSecretName,
+		MountPath: caCertMountPath,
+		ReadOnly:  true,
+	}
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "vault-config",
+			MountPath: "/etc/vault",
+		},
+		serviceAccountMount,
+	}
+	if cfg.mountCACertSecret {
+		volumeMounts = append(volumeMounts, caCertVolumeMount)
+	}
 	if injectionMode == sidecarInjectionMode {
 		pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
 			Name:  "vault-agent",
@@ -185,13 +220,7 @@ func injectVaultSidecar(_ context.Context, obj metav1.Object) (bool, error) {
 				"agent",
 				"-config=/etc/vault/vault-agent-config.hcl",
 			},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "vault-config",
-					MountPath: "/etc/vault",
-				},
-				serviceAccountMount,
-			},
+			VolumeMounts: volumeMounts,
 			Resources: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse(cfg.cpuLimit),
@@ -211,17 +240,10 @@ func injectVaultSidecar(_ context.Context, obj metav1.Object) (bool, error) {
 				"agent",
 				"-config=/etc/vault/vault-agent-config.hcl",
 			},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "vault-config",
-					MountPath: "/etc/vault",
-				},
-				{
-					Name:      vaultAgentVolumeMountName,
-					MountPath: vaultAgentVolumeMountPath,
-				},
-				serviceAccountMount,
-			},
+			VolumeMounts: append(volumeMounts, corev1.VolumeMount{
+				Name:      vaultAgentVolumeMountName,
+				MountPath: vaultAgentVolumeMountPath,
+			}),
 			Resources: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse(cfg.cpuLimit),
@@ -255,6 +277,8 @@ func main() {
 	fl.StringVar(&cfg.kubernetesAuthPath, "kubernetes-auth-path", "auth/kubernetes", "Path to Vault Kubernetes auth endpoint")
 	fl.StringVar(&cfg.vaultImageVersion, "vault-image-version", "1.3.0", "Tag on the 'vault' Docker image to inject with the sidecar")
 	fl.StringVar(&cfg.defaultConfigMapName, "default-config-map-name", "vault-agent-config", "The name of the ConfigMap to be used for the Vault agent configuration by default, unless overwritten by annotation")
+	fl.BoolVar(&cfg.mountCACertSecret, "mount-ca-cert-secret", false, "Indicate if the Secret indicated by the -ca-cert-secret-name flag should be mounted on the Vault agent container")
+	fl.StringVar(&cfg.caCertSecretName, "ca-cert-secret-name", "vault-tls", "The name of the secret in the target namespace to mount and use as a CA cert")
 	fl.StringVar(&cfg.cpuRequest, "cpu-request", "50m", "The amount of CPU units to request for the Vault agent sidecar")
 	fl.StringVar(&cfg.cpuLimit, "cpu-limit", "100m", "The amount of CPU units to limit to on the Vault agent sidecar")
 	fl.StringVar(&cfg.memoryRequest, "memory-request", "128Mi", "The amount of memory units to request for the Vault agent sidecar")
