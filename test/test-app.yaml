@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test
+  labels:
+    vault-agent-auto-inject-webhook: "true"
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: vault-tls
+  namespace: test
+spec:
+  secretName: vault-tls
+  duration: 1h
+  renewBefore: 30m
+  commonName: vault
+  issuerRef:
+    name: selfsigning-issuer
+    kind: ClusterIssuer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-agent-config
+  namespace: test
+data:
+  vault-agent-config.hcl: |-
+    exit_after_auth = false
+    pid_file = "/home/vault/pidfile"
+    auto_auth {
+      method "kubernetes" {
+        mount_path = "{{ getenv "KUBERNETES_AUTH_PATH" }}"
+        config = {
+          role = "{{ getenv "SERVICE" }}"
+        }
+      }
+    }
+    cache {
+      use_auto_auth_token = true
+    }
+    vault {
+      address = "{{ getenv "TARGET_VAULT_ADDRESS" }}"
+      ca_path = "/opt/vault/certs/ca.crt"
+    }
+    listener "tcp" {
+      address = "127.0.0.1:8200"
+      tls_disable = true
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: init-container-vault-agent-config
+  namespace: test
+data:
+  vault-agent-config.hcl: |-
+    exit_after_auth = true
+    auto_auth {
+      method "kubernetes" {
+        mount_path = "{{ getenv "KUBERNETES_AUTH_PATH" }}"
+        config = {
+          role = "{{ getenv "SERVICE" }}"
+        }
+      }
+      sink "file" {
+        config = {
+          path = "/vault-agent/.vault-token"
+        }
+      }
+    }
+    vault {
+      address = "{{ getenv "TARGET_VAULT_ADDRESS" }}"
+      tls_skip_verify = true
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-app
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      app: test-app
+  template:
+    metadata:
+      labels:
+        app: test-app
+      annotations:
+        vault.patoarvizu.dev/agent-auto-inject: sidecar
+    spec:
+      containers:
+        - name: test-app-container
+          image: alpine:3.10.3
+          command:
+            - "sh"
+            - "-c"
+            - "while true; do sleep 5; done"
