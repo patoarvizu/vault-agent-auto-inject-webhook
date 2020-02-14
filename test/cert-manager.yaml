@@ -6150,13 +6150,6 @@ spec:
         secret:
           secretName: cert-manager-webhook-tls
 ---
-apiVersion: cert-manager.io/v1alpha2
-kind: ClusterIssuer
-metadata:
-  name: selfsigning-issuer
-spec:
-  selfSigned: {}
----
 # Source: cert-manager/templates/webhook-apiservice.yaml
 apiVersion: apiregistration.k8s.io/v1beta1
 kind: APIService
