@@ -54,4 +54,15 @@ func TestWebhook(t *testing.T) {
 	if !foundCaCertVolumeMount {
 		t.Errorf("Volume mount 'vault-tls' for sidecar container not found")
 	}
+	foundConfigTemplateInitContainer := func() bool {
+		for _, i := range pod.Spec.InitContainers {
+			if i.Name == "config-template" {
+				return true
+			}
+		}
+		return false
+	}()
+	if !foundConfigTemplateInitContainer {
+		t.Errorf("Init container 'config-template' not found")
+	}
 }
