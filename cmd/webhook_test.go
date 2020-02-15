@@ -16,8 +16,9 @@ func TestWebhook(t *testing.T) {
 	pods, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
 		LabelSelector: "app=test-app",
 	})
+	pod := pods.Items[0]
 	foundVolume := func() bool {
-		for _, v := range pods.Items[0].Spec.Volumes {
+		for _, v := range pod.Spec.Volumes {
 			if v.Name == "vault-tls" {
 				return true
 			}
@@ -28,7 +29,7 @@ func TestWebhook(t *testing.T) {
 		t.Errorf("Volume 'vault-tls' not found")
 	}
 	foundVaultAgentContainer := func() bool {
-		for _, c := range pods.Items[0].Spec.Containers {
+		for _, c := range pod.Spec.Containers {
 			if c.Name == "vault-agent" {
 				return true
 			}
@@ -37,5 +38,20 @@ func TestWebhook(t *testing.T) {
 	}()
 	if !foundVaultAgentContainer {
 		t.Errorf("Sidecar container 'vault-agent' not found")
+	}
+	foundCaCertVolumeMount := func() bool {
+		for _, c := range pod.Spec.Containers {
+			if c.Name == "vault-agent" {
+				for _, m := range c.VolumeMounts {
+					if m.Name == "vault-tls" {
+						return true
+					}
+				}
+			}
+		}
+		return false
+	}()
+	if !foundCaCertVolumeMount {
+		t.Errorf("Volume mount 'vault-tls' for sidecar container not found")
 	}
 }
