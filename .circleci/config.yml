@@ -60,6 +60,7 @@ jobs:
             while [ "$(kubectl -n vault get deployment vault-agent-auto-inject-webhook -o jsonpath={.status.readyReplicas})" != "1" ]; do
               sleep 3
             done
+            kubectl apply -f test/test-app.yaml
             go test github.com/patoarvizu/vault-agent-auto-inject-webhook/cmd -v
       - run:
           name: Install notary
