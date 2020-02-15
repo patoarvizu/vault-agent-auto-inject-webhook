@@ -65,4 +65,23 @@ func TestWebhook(t *testing.T) {
 	if !foundConfigTemplateInitContainer {
 		t.Errorf("Init container 'config-template' not found")
 	}
+	foundVaultAddrEnvironmentVariable := func() bool {
+		foundInAllContainers := true
+		for _, c := range pod.Spec.Containers {
+			found := false
+			if c.Name == "vault-agent" {
+				continue
+			}
+			for _, e := range c.Env {
+				if e.Name == "VAULT_ADDR" {
+					found = true
+				}
+			}
+			foundInAllContainers = foundInAllContainers && found
+		}
+		return foundInAllContainers
+	}()
+	if !foundVaultAddrEnvironmentVariable {
+		t.Errorf("Environment variable 'VAULT_ADDR' not found")
+	}
 }
