@@ -47,7 +47,7 @@ jobs:
       - run:
           name: Run tests
           command: |
-            k3d create --image rancher/k3s:v0.7.0
+            k3d create --image rancher/k3s:v1.0.0
             sleep 10
             export KUBECONFIG="$(k3d get-kubeconfig --name=k3s-default)"
             k3d import-images patoarvizu/vault-agent-auto-inject-webhook:latest
