@@ -3,16 +3,93 @@ package main
 import (
 	"os"
 	"testing"
+	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-func TestWebhook(t *testing.T) {
+var initContainerTestAppDeployment = &appsv1.Deployment{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "test-app-init",
+		Namespace: "test",
+	},
+	Spec: appsv1.DeploymentSpec{
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app": "test-app-init",
+			},
+		},
+		Template: apiv1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					"app": "test-app-init",
+				},
+				Annotations: map[string]string{
+					"vault.patoarvizu.dev/agent-auto-inject": "init-container",
+				},
+			},
+			Spec: apiv1.PodSpec{
+				Containers: []apiv1.Container{
+					{
+						Name:  "test-app-init",
+						Image: "alpine",
+						Command: []string{
+							"sh",
+							"-c",
+							"while true; do sleep 5; done",
+						},
+					},
+				},
+			},
+		},
+	},
+}
+
+var clientset *kubernetes.Clientset
+
+func TestMain(m *testing.M) {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	config, _ := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	clientset, _ := kubernetes.NewForConfig(config)
+	cs, _ := kubernetes.NewForConfig(config)
+	clientset = cs
+	os.Exit(m.Run())
+}
+
+func TestWebhookInit(t *testing.T) {
+	deploymentClient := clientset.AppsV1().Deployments("test")
+	deploymentClient.Create(initContainerTestAppDeployment)
+	wait.Poll(time.Second, time.Second*10, func() (done bool, err error) {
+		podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
+			LabelSelector: "app=test-app-init",
+		})
+		if len(podList.Items) > 0 {
+			return true, nil
+		}
+		return false, nil
+	})
+	podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
+		LabelSelector: "app=test-app-init",
+	})
+	pod := podList.Items[0]
+	foundVaultAgentInitContainer := func() bool {
+		for _, i := range pod.Spec.InitContainers {
+			if i.Name == "vault-agent" {
+				return true
+			}
+		}
+		return false
+	}()
+	if !foundVaultAgentInitContainer {
+		t.Errorf("Init container 'vault-agent' wasn't injected when agent-auto-inject annotation is 'init-cintainer'")
+	}
+}
+
+func TestWebhookSidecar(t *testing.T) {
 	pods, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
 		LabelSelector: "app=test-app",
 	})
