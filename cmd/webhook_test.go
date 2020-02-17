@@ -96,8 +96,10 @@ func TestMain(m *testing.M) {
 	clientset = cs
 	exitCode := m.Run()
 	deploymentClient := cs.AppsV1().Deployments("test")
-	deploymentClient.Delete("test-app-init", &metav1.DeleteOptions{})
-	deploymentClient.Delete("test-app-sidecar", &metav1.DeleteOptions{})
+	deploymentList, _ := deploymentClient.List(metav1.ListOptions{})
+	for _, d := range deploymentList.Items {
+		deploymentClient.Delete(d.Name, &metav1.DeleteOptions{})
+	}
 	os.Exit(exitCode)
 }
 
