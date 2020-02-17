@@ -51,29 +51,46 @@ var overrideConfigMap = &apiv1.ConfigMap{
 
 var clientset *kubernetes.Clientset
 
-func createTestAppPod(mode string) apiv1.Pod {
+func createTestAppDeployment(name string, mode string, extraAnnotations map[string]string) *appsv1.Deployment {
 	testAppDeployment := baseTestAppDeployment
-	name := "test-app-" + mode
-	testAppDeployment.ObjectMeta.Name = name
-	testAppDeployment.Spec.Selector.MatchLabels = map[string]string{"app": name}
-	testAppDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{"app": name}
-	testAppDeployment.Spec.Template.ObjectMeta.Annotations = map[string]string{"vault.patoarvizu.dev/agent-auto-inject": mode}
-	testAppDeployment.Spec.Template.Spec.Containers[0].Name = name
-	deploymentClient := clientset.AppsV1().Deployments("test")
-	deploymentClient.Create(testAppDeployment)
-	wait.Poll(time.Second, time.Second*10, func() (done bool, err error) {
-		podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
-			LabelSelector: "app=" + name,
+	nameMode := name + "-" + mode
+	testAppDeployment.ObjectMeta.Name = nameMode
+	testAppDeployment.Spec.Selector.MatchLabels = map[string]string{"app": nameMode}
+	testAppDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{"app": nameMode}
+	annotations := map[string]string{"vault.patoarvizu.dev/agent-auto-inject": mode}
+	for k, v := range extraAnnotations {
+		annotations[k] = v
+	}
+	testAppDeployment.Spec.Template.ObjectMeta.Annotations = annotations
+	testAppDeployment.Spec.Template.Spec.Containers[0].Name = nameMode
+	return testAppDeployment
+}
+
+func deployTestAppAndWait(deployment *appsv1.Deployment) (pod *apiv1.Pod, e error) {
+	deploymentClient := clientset.AppsV1().Deployments(deployment.ObjectMeta.Namespace)
+	_, err := deploymentClient.Create(deployment)
+	if err != nil {
+		return nil, err
+	}
+	err = wait.Poll(time.Second, time.Second*10, func() (done bool, err error) {
+		podList, _ := clientset.CoreV1().Pods(deployment.ObjectMeta.Namespace).List(metav1.ListOptions{
+			LabelSelector: "app=" + deployment.ObjectMeta.Name,
 		})
 		if len(podList.Items) > 0 {
 			return true, nil
 		}
 		return false, nil
 	})
-	podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
-		LabelSelector: "app=" + name,
+	if err != nil {
+		return nil, err
+	}
+	podList, err := clientset.CoreV1().Pods(deployment.ObjectMeta.Namespace).List(metav1.ListOptions{
+		LabelSelector: "app=" + deployment.ObjectMeta.Name,
 	})
-	return podList.Items[0]
+	if err != nil {
+		return nil, err
+	}
+	return &podList.Items[0], nil
 }
 
 func TestMain(m *testing.M) {
@@ -88,40 +105,19 @@ func TestMain(m *testing.M) {
 	for _, d := range deploymentList.Items {
 		deploymentClient.Delete(d.Name, &metav1.DeleteOptions{PropagationPolicy: &dpb})
 	}
+	configMapClient := clientset.CoreV1().ConfigMaps("test")
+	configMapClient.Delete(overrideConfigMap.ObjectMeta.Name, &metav1.DeleteOptions{})
 	os.Exit(exitCode)
 }
 
 func TestOverwriteAgentConfig(t *testing.T) {
 	configMapClient := clientset.CoreV1().ConfigMaps("test")
 	configMapClient.Create(overrideConfigMap)
-	testAppDeployment := baseTestAppDeployment
-	name := "test-app-override-init-container"
-	testAppDeployment.ObjectMeta.Name = name
-	testAppDeployment.Spec.Selector.MatchLabels = map[string]string{"app": name}
-	testAppDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{"app": name}
-	testAppDeployment.Spec.Template.ObjectMeta.Annotations = map[string]string{"vault.patoarvizu.dev/agent-auto-inject": "init-container", "vault.patoarvizu.dev/agent-config-map": "override-vault-agent-config"}
-	testAppDeployment.Spec.Template.Spec.Containers[0].Name = name
-	deploymentClient := clientset.AppsV1().Deployments("test")
-	_, err := deploymentClient.Create(testAppDeployment)
+	deployment := createTestAppDeployment("test-app-override", "init-container", map[string]string{"vault.patoarvizu.dev/agent-config-map": "override-vault-agent-config"})
+	pod, err := deployTestAppAndWait(deployment)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 	}
-	err = wait.Poll(time.Second, time.Second*10, func() (done bool, err error) {
-		podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
-			LabelSelector: "app=" + name,
-		})
-		if len(podList.Items) > 0 {
-			return true, nil
-		}
-		return false, nil
-	})
-	if err != nil {
-		t.Errorf("Error %v", err)
-	}
-	podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
-		LabelSelector: "app=" + name,
-	})
-	pod := podList.Items[0]
 	volumeFound := false
 	for _, v := range pod.Spec.Volumes {
 		if v.ConfigMap != nil && v.ConfigMap.Name == "override-vault-agent-config" {
@@ -148,7 +144,11 @@ func TestOverwriteAgentConfig(t *testing.T) {
 }
 
 func TestWebhookInit(t *testing.T) {
-	pod := createTestAppPod("init-container")
+	deployment := createTestAppDeployment("test-app-init-container", "init-container", nil)
+	pod, err := deployTestAppAndWait(deployment)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
 	foundVaultAgentInitContainer := func() bool {
 		for _, i := range pod.Spec.InitContainers {
 			if i.Name == "vault-agent" {
@@ -163,7 +163,11 @@ func TestWebhookInit(t *testing.T) {
 }
 
 func TestWebhookSidecar(t *testing.T) {
-	pod := createTestAppPod("sidecar")
+	deployment := createTestAppDeployment("test-app-sidecar", "sidecar", nil)
+	pod, err := deployTestAppAndWait(deployment)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
 	foundVolume := func() bool {
 		for _, v := range pod.Spec.Volumes {
 			if v.Name == "vault-tls" {
