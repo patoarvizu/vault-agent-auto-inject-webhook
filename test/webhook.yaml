@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vault
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: vault-agent-auto-inject-webhook
+  namespace: vault
+spec:
+  secretName: vault-agent-auto-inject-webhook
+  duration: 720h
+  renewBefore: 360h
+  commonName: vault-agent-auto-inject-webhook
+  dnsNames:
+  - vault-agent-auto-inject-webhook
+  - vault-agent-auto-inject-webhook.vault
+  - vault-agent-auto-inject-webhook.vault.svc
+  issuerRef:
+    name: selfsigning-issuer
+    kind: ClusterIssuer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-agent-auto-inject-webhook
+  namespace: vault
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault-agent-auto-inject-webhook
+  namespace: vault
+spec:
+  selector:
+    matchLabels:
+      app: vault-agent-auto-inject-webhook
+  template:
+    metadata:
+      labels:
+        app: vault-agent-auto-inject-webhook
+    spec:
+      serviceAccountName: vault-agent-auto-inject-webhook
+      containers:
+        - name: vault-agent-auto-inject-webhook
+          image: patoarvizu/vault-agent-auto-inject-webhook:latest
+          imagePullPolicy: IfNotPresent
+          command:
+          - /vault-agent-auto-inject-webhook
+          - -tls-cert-file
+          - /tls/tls.crt
+          - -tls-key-file
+          - /tls/tls.key
+          - -mount-ca-cert-secret
+          ports:
+          - name: https
+            containerPort: 4443
+          volumeMounts:
+            - name: tls
+              mountPath: /tls
+      volumes:
+      - name: tls
+        secret:
+          secretName: vault-agent-auto-inject-webhook
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-agent-auto-inject-webhook
+  namespace: vault
+  labels:
+    app: vault-agent-auto-inject-webhook
+spec:
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 443
+      targetPort: https
+  selector:
+    app: vault-agent-auto-inject-webhook
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: vault-agent-auto-inject-webhook-test
+  labels:
+    app: vault-agent-auto-inject-webhook
+  annotations:
+    cert-manager.io/inject-ca-from: vault/vault-agent-auto-inject-webhook
+webhooks:
+  - name: webhook.vault.patoarvizu.dev
+    rules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - pods
+    failurePolicy: Fail
+    namespaceSelector:
+      matchExpressions:
+      - key: vault-agent-auto-inject-webhook
+        operator: Exists
+    clientConfig:
+      caBundle: Cg==
+      service:
+        name: vault-agent-auto-inject-webhook
+        namespace: vault
+        path: /

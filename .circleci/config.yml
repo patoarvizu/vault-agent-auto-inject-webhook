@@ -28,16 +28,52 @@ jobs:
             mkdir -p ${HOME}/go/bin
             echo 'export PATH="$GOPATH/bin:$PATH"' >> "${BASH_ENV}"
       - run:
-          name: Install notary
+          name: Install kubectl
           command: |
-            curl -L https://github.com/theupdateframework/notary/releases/download/v${NOTARY_VERSION}/notary-Linux-amd64 -o notary
-            chmod +x notary
-            sudo mv notary /usr/local/bin
+            curl -Lo kubectl "https://storage.googleapis.com/kubernetes-release/release/v1.12.0/bin/linux/amd64/kubectl"
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin/
+            mkdir -p "${HOME}/.kube"
+            touch "${HOME}/.kube/config"
+      - run:
+          name: Install k3d
+          command: |
+            wget -q -O - https://raw.githubusercontent.com/rancher/k3d/v1.3.1/install.sh | bash
       - run:
           name: Build image
           command: |
             go mod vendor
             docker build -t patoarvizu/vault-agent-auto-inject-webhook:latest .
+      - run:
+          name: Run tests
+          command: |
+            k3d create --image rancher/k3s:v1.0.0
+            sleep 20
+            export KUBECONFIG="$(k3d get-kubeconfig --name=k3s-default)"
+            k3d import-images patoarvizu/vault-agent-auto-inject-webhook:latest
+            kubectl apply -f test/cert-manager.yaml --validate=false
+            while [ "$(kubectl -n cert-manager get deployment cert-manager-webhook -o jsonpath={.status.availableReplicas})" != "1" ]; do
+              echo "cert-manager Deployment not ready yet"
+              sleep 3
+            done
+            while [ $(kubectl get apiservices v1beta1.webhook.cert-manager.io -o json | jq -r '[.status.conditions[] | select (.type == "Available" and .status == "True")] | length') != "1" ]; do
+              echo "cert-manager APIService not ready yet"
+              sleep 3
+            done
+            kubectl apply -f test/cluster-issuer.yaml
+            kubectl apply -f test/webhook.yaml
+            while [ "$(kubectl -n vault get deployment vault-agent-auto-inject-webhook -o jsonpath={.status.readyReplicas})" != "1" ]; do
+              echo "vault-agent-auto-inject-webhook Deployment not ready yet"
+              sleep 3
+            done
+            kubectl apply -f test/test-app.yaml
+            go test github.com/patoarvizu/vault-agent-auto-inject-webhook/cmd -v
+      - run:
+          name: Install notary
+          command: |
+            curl -L https://github.com/theupdateframework/notary/releases/download/v${NOTARY_VERSION}/notary-Linux-amd64 -o notary
+            chmod +x notary
+            sudo mv notary /usr/local/bin
       - snyk/scan:
           docker-image-name: patoarvizu/vault-agent-auto-inject-webhook:latest
           fail-on-issues: true
