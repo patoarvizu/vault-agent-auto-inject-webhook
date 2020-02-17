@@ -53,17 +53,17 @@ jobs:
             k3d import-images patoarvizu/vault-agent-auto-inject-webhook:latest
             kubectl apply -f test/cert-manager.yaml --validate=false
             while [ "$(kubectl -n cert-manager get deployment cert-manager-webhook -o jsonpath={.status.availableReplicas})" != "1" ]; do
-              sleep 3
-            done
-            while [ "$(kubectl -n cert-manager get endpoints cert-manager-webhook -o json | jq -r '.subsets[].addresses | length')" != "1" ]; do
+              echo "cert-manager Deployment not ready yet"
               sleep 3
             done
             while [ $(kubectl get apiservices v1beta1.webhook.cert-manager.io -o json | jq -r '[.status.conditions[] | select (.type == "Available" and .status == "True")] | length') != "1" ]; do
+              echo "cert-manager APIService not ready yet"
               sleep 3
             done
             kubectl apply -f test/cluster-issuer.yaml
             kubectl apply -f test/webhook.yaml
             while [ "$(kubectl -n vault get deployment vault-agent-auto-inject-webhook -o jsonpath={.status.readyReplicas})" != "1" ]; do
+              echo "vault-agent-auto-inject-webhook Deployment not ready yet"
               sleep 3
             done
             go test github.com/patoarvizu/vault-agent-auto-inject-webhook/cmd -v
