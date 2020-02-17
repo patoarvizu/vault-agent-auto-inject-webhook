@@ -41,7 +41,7 @@ var baseTestAppDeployment = &appsv1.Deployment{
 
 var clientset *kubernetes.Clientset
 
-func createTestAppDeployment(mode string) *appsv1.Deployment {
+func createTestAppPod(mode string) apiv1.Pod {
 	testAppDeployment := baseTestAppDeployment
 	name := "test-app-" + mode
 	testAppDeployment.ObjectMeta.Name = name
@@ -49,7 +49,21 @@ func createTestAppDeployment(mode string) *appsv1.Deployment {
 	testAppDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{"app": name}
 	testAppDeployment.Spec.Template.ObjectMeta.Annotations = map[string]string{"vault.patoarvizu.dev/agent-auto-inject": mode}
 	testAppDeployment.Spec.Template.Spec.Containers[0].Name = name
-	return testAppDeployment
+	deploymentClient := clientset.AppsV1().Deployments("test")
+	deploymentClient.Create(testAppDeployment)
+	wait.Poll(time.Second, time.Second*10, func() (done bool, err error) {
+		podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
+			LabelSelector: "app=" + name,
+		})
+		if len(podList.Items) > 0 {
+			return true, nil
+		}
+		return false, nil
+	})
+	podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
+		LabelSelector: "app=" + name,
+	})
+	return podList.Items[0]
 }
 
 func TestMain(m *testing.M) {
@@ -60,28 +74,15 @@ func TestMain(m *testing.M) {
 	exitCode := m.Run()
 	deploymentClient := cs.AppsV1().Deployments("test")
 	deploymentList, _ := deploymentClient.List(metav1.ListOptions{})
+	dpb := metav1.DeletePropagationBackground
 	for _, d := range deploymentList.Items {
-		deploymentClient.Delete(d.Name, &metav1.DeleteOptions{})
+		deploymentClient.Delete(d.Name, &metav1.DeleteOptions{PropagationPolicy: &dpb})
 	}
 	os.Exit(exitCode)
 }
 
 func TestWebhookInit(t *testing.T) {
-	deploymentClient := clientset.AppsV1().Deployments("test")
-	deploymentClient.Create(createTestAppDeployment("init-container"))
-	wait.Poll(time.Second, time.Second*10, func() (done bool, err error) {
-		podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
-			LabelSelector: "app=test-app-init-container",
-		})
-		if len(podList.Items) > 0 {
-			return true, nil
-		}
-		return false, nil
-	})
-	podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
-		LabelSelector: "app=test-app-init-container",
-	})
-	pod := podList.Items[0]
+	pod := createTestAppPod("init-container")
 	foundVaultAgentInitContainer := func() bool {
 		for _, i := range pod.Spec.InitContainers {
 			if i.Name == "vault-agent" {
@@ -96,21 +97,7 @@ func TestWebhookInit(t *testing.T) {
 }
 
 func TestWebhookSidecar(t *testing.T) {
-	deploymentClient := clientset.AppsV1().Deployments("test")
-	deploymentClient.Create(createTestAppDeployment("sidecar"))
-	wait.Poll(time.Second, time.Second*10, func() (done bool, err error) {
-		podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
-			LabelSelector: "app=test-app-sidecar",
-		})
-		if len(podList.Items) > 0 {
-			return true, nil
-		}
-		return false, nil
-	})
-	podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
-		LabelSelector: "app=test-app-sidecar",
-	})
-	pod := podList.Items[0]
+	pod := createTestAppPod("sidecar")
 	foundVolume := func() bool {
 		for _, v := range pod.Spec.Volumes {
 			if v.Name == "vault-tls" {
