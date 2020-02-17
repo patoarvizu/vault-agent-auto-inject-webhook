@@ -159,7 +159,7 @@ func TestWebhookInit(t *testing.T) {
 		return false
 	}()
 	if !foundVaultAgentInitContainer {
-		t.Errorf("Init container 'vault-agent' wasn't injected when agent-auto-inject annotation is 'init-cintainer'")
+		t.Error("Init container 'vault-agent' wasn't injected when agent-auto-inject annotation is 'init-cintainer'")
 	}
 }
 
@@ -178,7 +178,7 @@ func TestWebhookSidecar(t *testing.T) {
 		return false
 	}()
 	if !foundVolume {
-		t.Errorf("Volume 'vault-tls' not found")
+		t.Error("Volume 'vault-tls' not found")
 	}
 	foundVaultAgentContainer := func() bool {
 		for _, c := range pod.Spec.Containers {
@@ -189,7 +189,7 @@ func TestWebhookSidecar(t *testing.T) {
 		return false
 	}()
 	if !foundVaultAgentContainer {
-		t.Errorf("Sidecar container 'vault-agent' not found")
+		t.Error("Sidecar container 'vault-agent' not found")
 	}
 	foundCaCertVolumeMount := func() bool {
 		for _, c := range pod.Spec.Containers {
@@ -204,7 +204,7 @@ func TestWebhookSidecar(t *testing.T) {
 		return false
 	}()
 	if !foundCaCertVolumeMount {
-		t.Errorf("Volume mount 'vault-tls' for sidecar container not found")
+		t.Error("Volume mount 'vault-tls' for sidecar container not found")
 	}
 	foundConfigTemplateInitContainer := func() bool {
 		for _, i := range pod.Spec.InitContainers {
@@ -215,7 +215,7 @@ func TestWebhookSidecar(t *testing.T) {
 		return false
 	}()
 	if !foundConfigTemplateInitContainer {
-		t.Errorf("Init container 'config-template' not found")
+		t.Error("Init container 'config-template' not found")
 	}
 	foundVaultAddrEnvironmentVariable := func() bool {
 		foundInAllContainers := true
@@ -234,7 +234,23 @@ func TestWebhookSidecar(t *testing.T) {
 		return foundInAllContainers
 	}()
 	if !foundVaultAddrEnvironmentVariable {
-		t.Errorf("Environment variable 'VAULT_ADDR' not found")
+		t.Error("Environment variable 'VAULT_ADDR' not found")
+	}
+	foundServiceAccountMount := func() bool {
+		for _, c := range pod.Spec.Containers {
+			if c.Name != "vault-agent" {
+				continue
+			}
+			for _, m := range c.VolumeMounts {
+				if m.MountPath == "/var/run/secrets/kubernetes.io/serviceaccount" {
+					return true
+				}
+			}
+		}
+		return false
+	}()
+	if !foundServiceAccountMount {
+		t.Error("Service account with path '/var/run/secrets/kubernetes.io/serviceaccount' not found in 'vault-agent' sidecar")
 	}
 }
 
@@ -249,16 +265,16 @@ func TestDefaultResources(t *testing.T) {
 			continue
 		}
 		if !c.Resources.Requests.Cpu().Equal(resource.MustParse("50m")) {
-			t.Errorf("CPU request isn't the default '50m'")
+			t.Error("CPU request isn't the default '50m'")
 		}
 		if !c.Resources.Limits.Cpu().Equal(resource.MustParse("100m")) {
-			t.Errorf("CPU limit isn't the default '100m'")
+			t.Error("CPU limit isn't the default '100m'")
 		}
 		if !c.Resources.Requests.Memory().Equal(resource.MustParse("128Mi")) {
-			t.Errorf("Memory request isn't the default '128Mi'")
+			t.Error("Memory request isn't the default '128Mi'")
 		}
 		if !c.Resources.Limits.Memory().Equal(resource.MustParse("256Mi")) {
-			t.Errorf("Memory limit isn't the default '256Mi'")
+			t.Error("Memory limit isn't the default '256Mi'")
 		}
 	}
 }
