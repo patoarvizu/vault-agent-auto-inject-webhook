@@ -13,67 +13,19 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-var initContainerTestAppDeployment = &appsv1.Deployment{
+var baseTestAppDeployment = &appsv1.Deployment{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "test-app-init",
 		Namespace: "test",
 	},
 	Spec: appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"app": "test-app-init",
-			},
+			MatchLabels: map[string]string{},
 		},
 		Template: apiv1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					"app": "test-app-init",
-				},
-				Annotations: map[string]string{
-					"vault.patoarvizu.dev/agent-auto-inject": "init-container",
-				},
-			},
+			ObjectMeta: metav1.ObjectMeta{},
 			Spec: apiv1.PodSpec{
 				Containers: []apiv1.Container{
 					{
-						Name:  "test-app-init",
-						Image: "alpine",
-						Command: []string{
-							"sh",
-							"-c",
-							"while true; do sleep 5; done",
-						},
-					},
-				},
-			},
-		},
-	},
-}
-
-var sidecarTestAppDeployment = &appsv1.Deployment{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      "test-app-sidecar",
-		Namespace: "test",
-	},
-	Spec: appsv1.DeploymentSpec{
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"app": "test-app-sidecar",
-			},
-		},
-		Template: apiv1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					"app": "test-app-sidecar",
-				},
-				Annotations: map[string]string{
-					"vault.patoarvizu.dev/agent-auto-inject": "sidecar",
-				},
-			},
-			Spec: apiv1.PodSpec{
-				Containers: []apiv1.Container{
-					{
-						Name:  "test-app-sidecar",
 						Image: "alpine",
 						Command: []string{
 							"sh",
@@ -88,6 +40,17 @@ var sidecarTestAppDeployment = &appsv1.Deployment{
 }
 
 var clientset *kubernetes.Clientset
+
+func createTestAppDeployment(mode string) *appsv1.Deployment {
+	testAppDeployment := baseTestAppDeployment
+	name := "test-app-" + mode
+	testAppDeployment.ObjectMeta.Name = name
+	testAppDeployment.Spec.Selector.MatchLabels = map[string]string{"app": name}
+	testAppDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{"app": name}
+	testAppDeployment.Spec.Template.ObjectMeta.Annotations = map[string]string{"vault.patoarvizu.dev/agent-auto-inject": mode}
+	testAppDeployment.Spec.Template.Spec.Containers[0].Name = name
+	return testAppDeployment
+}
 
 func TestMain(m *testing.M) {
 	kubeconfig := os.Getenv("KUBECONFIG")
@@ -105,10 +68,10 @@ func TestMain(m *testing.M) {
 
 func TestWebhookInit(t *testing.T) {
 	deploymentClient := clientset.AppsV1().Deployments("test")
-	deploymentClient.Create(initContainerTestAppDeployment)
+	deploymentClient.Create(createTestAppDeployment("init-container"))
 	wait.Poll(time.Second, time.Second*10, func() (done bool, err error) {
 		podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
-			LabelSelector: "app=test-app-init",
+			LabelSelector: "app=test-app-init-container",
 		})
 		if len(podList.Items) > 0 {
 			return true, nil
@@ -116,7 +79,7 @@ func TestWebhookInit(t *testing.T) {
 		return false, nil
 	})
 	podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
-		LabelSelector: "app=test-app-init",
+		LabelSelector: "app=test-app-init-container",
 	})
 	pod := podList.Items[0]
 	foundVaultAgentInitContainer := func() bool {
@@ -134,7 +97,7 @@ func TestWebhookInit(t *testing.T) {
 
 func TestWebhookSidecar(t *testing.T) {
 	deploymentClient := clientset.AppsV1().Deployments("test")
-	deploymentClient.Create(sidecarTestAppDeployment)
+	deploymentClient.Create(createTestAppDeployment("sidecar"))
 	wait.Poll(time.Second, time.Second*10, func() (done bool, err error) {
 		podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
 			LabelSelector: "app=test-app-sidecar",
