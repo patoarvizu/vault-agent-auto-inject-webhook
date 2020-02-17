@@ -7,6 +7,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -234,5 +235,30 @@ func TestWebhookSidecar(t *testing.T) {
 	}()
 	if !foundVaultAddrEnvironmentVariable {
 		t.Errorf("Environment variable 'VAULT_ADDR' not found")
+	}
+}
+
+func TestDefaultResources(t *testing.T) {
+	deployment := createTestAppDeployment("test-app-default-resources", "sidecar", nil)
+	pod, err := deployTestAppAndWait(deployment)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
+	for _, c := range pod.Spec.Containers {
+		if c.Name != "vault-agent" {
+			continue
+		}
+		if !c.Resources.Requests.Cpu().Equal(resource.MustParse("50m")) {
+			t.Errorf("CPU request isn't the default '50m'")
+		}
+		if !c.Resources.Limits.Cpu().Equal(resource.MustParse("100m")) {
+			t.Errorf("CPU limit isn't the default '100m'")
+		}
+		if !c.Resources.Requests.Memory().Equal(resource.MustParse("128Mi")) {
+			t.Errorf("Memory request isn't the default '128Mi'")
+		}
+		if !c.Resources.Limits.Memory().Equal(resource.MustParse("256Mi")) {
+			t.Errorf("Memory limit isn't the default '256Mi'")
+		}
 	}
 }
