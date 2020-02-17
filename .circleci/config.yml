@@ -66,6 +66,7 @@ jobs:
               echo "vault-agent-auto-inject-webhook Deployment not ready yet"
               sleep 3
             done
+            kubectl apply -f test/test-app.yaml
             go test github.com/patoarvizu/vault-agent-auto-inject-webhook/cmd -v
       - run:
           name: Install notary

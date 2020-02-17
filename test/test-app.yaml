@@ -73,27 +73,3 @@ data:
       address = "{{ getenv "TARGET_VAULT_ADDRESS" }}"
       tls_skip_verify = true
     }
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: test-app
-  namespace: test
-spec:
-  selector:
-    matchLabels:
-      app: test-app
-  template:
-    metadata:
-      labels:
-        app: test-app
-      annotations:
-        vault.patoarvizu.dev/agent-auto-inject: sidecar
-    spec:
-      containers:
-        - name: test-app-container
-          image: alpine:3.10.3
-          command:
-            - "sh"
-            - "-c"
-            - "while true; do sleep 5; done"
