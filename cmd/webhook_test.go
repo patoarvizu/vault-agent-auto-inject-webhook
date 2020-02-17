@@ -39,6 +39,16 @@ var baseTestAppDeployment = &appsv1.Deployment{
 	},
 }
 
+var overrideConfigMap = &apiv1.ConfigMap{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "override-vault-agent-config",
+		Namespace: "test",
+	},
+	Data: map[string]string{
+		"vault-agent-config.hcl": "vault {}",
+	},
+}
+
 var clientset *kubernetes.Clientset
 
 func createTestAppPod(mode string) apiv1.Pod {
@@ -79,6 +89,62 @@ func TestMain(m *testing.M) {
 		deploymentClient.Delete(d.Name, &metav1.DeleteOptions{PropagationPolicy: &dpb})
 	}
 	os.Exit(exitCode)
+}
+
+func TestOverwriteAgentConfig(t *testing.T) {
+	configMapClient := clientset.CoreV1().ConfigMaps("test")
+	configMapClient.Create(overrideConfigMap)
+	testAppDeployment := baseTestAppDeployment
+	name := "test-app-override-init-container"
+	testAppDeployment.ObjectMeta.Name = name
+	testAppDeployment.Spec.Selector.MatchLabels = map[string]string{"app": name}
+	testAppDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{"app": name}
+	testAppDeployment.Spec.Template.ObjectMeta.Annotations = map[string]string{"vault.patoarvizu.dev/agent-auto-inject": "init-container", "vault.patoarvizu.dev/agent-config-map": "override-vault-agent-config"}
+	testAppDeployment.Spec.Template.Spec.Containers[0].Name = name
+	deploymentClient := clientset.AppsV1().Deployments("test")
+	_, err := deploymentClient.Create(testAppDeployment)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
+	err = wait.Poll(time.Second, time.Second*10, func() (done bool, err error) {
+		podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
+			LabelSelector: "app=" + name,
+		})
+		if len(podList.Items) > 0 {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		t.Errorf("Error %v", err)
+	}
+	podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
+		LabelSelector: "app=" + name,
+	})
+	pod := podList.Items[0]
+	volumeFound := false
+	for _, v := range pod.Spec.Volumes {
+		if v.ConfigMap != nil && v.ConfigMap.Name == "override-vault-agent-config" {
+			volumeFound = true
+		}
+	}
+	if !volumeFound {
+		t.Error("Volume 'override-vault-agent-config' is not found")
+	}
+	volumeMountFound := false
+	for _, i := range pod.Spec.InitContainers {
+		if i.Name != "config-template" {
+			continue
+		}
+		for _, m := range i.VolumeMounts {
+			if m.Name == "vault-config-template" {
+				volumeMountFound = true
+			}
+		}
+	}
+	if !volumeMountFound {
+		t.Error("Volume mount 'vault-config-template' is not found")
+	}
 }
 
 func TestWebhookInit(t *testing.T) {
