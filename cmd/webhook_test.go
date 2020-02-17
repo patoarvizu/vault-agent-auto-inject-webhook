@@ -50,6 +50,43 @@ var initContainerTestAppDeployment = &appsv1.Deployment{
 	},
 }
 
+var sidecarTestAppDeployment = &appsv1.Deployment{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "test-app-sidecar",
+		Namespace: "test",
+	},
+	Spec: appsv1.DeploymentSpec{
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app": "test-app-sidecar",
+			},
+		},
+		Template: apiv1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					"app": "test-app-sidecar",
+				},
+				Annotations: map[string]string{
+					"vault.patoarvizu.dev/agent-auto-inject": "sidecar",
+				},
+			},
+			Spec: apiv1.PodSpec{
+				Containers: []apiv1.Container{
+					{
+						Name:  "test-app-sidecar",
+						Image: "alpine",
+						Command: []string{
+							"sh",
+							"-c",
+							"while true; do sleep 5; done",
+						},
+					},
+				},
+			},
+		},
+	},
+}
+
 var clientset *kubernetes.Clientset
 
 func TestMain(m *testing.M) {
@@ -57,7 +94,11 @@ func TestMain(m *testing.M) {
 	config, _ := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	cs, _ := kubernetes.NewForConfig(config)
 	clientset = cs
-	os.Exit(m.Run())
+	exitCode := m.Run()
+	deploymentClient := cs.AppsV1().Deployments("test")
+	deploymentClient.Delete("test-app-init", &metav1.DeleteOptions{})
+	deploymentClient.Delete("test-app-sidecar", &metav1.DeleteOptions{})
+	os.Exit(exitCode)
 }
 
 func TestWebhookInit(t *testing.T) {
@@ -90,10 +131,21 @@ func TestWebhookInit(t *testing.T) {
 }
 
 func TestWebhookSidecar(t *testing.T) {
-	pods, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
-		LabelSelector: "app=test-app",
+	deploymentClient := clientset.AppsV1().Deployments("test")
+	deploymentClient.Create(sidecarTestAppDeployment)
+	wait.Poll(time.Second, time.Second*10, func() (done bool, err error) {
+		podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
+			LabelSelector: "app=test-app-sidecar",
+		})
+		if len(podList.Items) > 0 {
+			return true, nil
+		}
+		return false, nil
 	})
-	pod := pods.Items[0]
+	podList, _ := clientset.CoreV1().Pods("test").List(metav1.ListOptions{
+		LabelSelector: "app=test-app-sidecar",
+	})
+	pod := podList.Items[0]
 	foundVolume := func() bool {
 		for _, v := range pod.Spec.Volumes {
 			if v.Name == "vault-tls" {
