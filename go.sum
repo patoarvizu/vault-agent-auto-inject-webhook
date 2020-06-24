@@ -105,7 +105,6 @@ github.com/radovskyb/watcher v1.0.7 h1:AYePLih6dpmS32vlHfhCeli8127LzkIgwJGcwwe8t
 github.com/radovskyb/watcher v1.0.7/go.mod h1:78okwvY5wPdzcb1UYnip1pvrZNIVEIh/Cm+ZuvsUYIg=
 github.com/slok/kubewebhook v0.3.0 h1:2IuV3HH+nYMqsGOZzsEBRmNgds3cDypKQ9ZygS063x8=
 github.com/slok/kubewebhook v0.3.0/go.mod h1:DfobyP9GEzrdO/5dwhKPWtY7g8EAAwJNwDMEj7EJvDI=
-github.com/slok/kubewebhook v0.10.0 h1:c4HzYRd01BsmrijmlpdZu9k5Jpqj67+R4X54rljK75I=
 github.com/spf13/pflag v0.0.0-20170130214245-9ff6c6923cff/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
 github.com/spf13/pflag v1.0.1/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
 github.com/spf13/pflag v1.0.3/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
