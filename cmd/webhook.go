@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	whhttp "github.com/slok/kubewebhook/pkg/http"
 	"github.com/slok/kubewebhook/pkg/log"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/radovskyb/watcher"
 	"github.com/slok/kubewebhook/pkg/observability/metrics"
 )
 
@@ -288,6 +290,25 @@ func main() {
 
 	fl.Parse(os.Args[1:])
 
+	w := watcher.New()
+	defer w.Close()
+	w.FilterOps(watcher.Write)
+	err := w.Add(cfg.certFile)
+	if err != nil {
+		logger.Errorf("Error: %v", err)
+	}
+	go func() {
+		for {
+			select {
+			case <-w.Event:
+				os.Exit(0)
+			case <-w.Closed:
+				return
+			}
+		}
+	}()
+	go w.Start(time.Millisecond * 100)
+
 	pm := mutatingwh.MutatorFunc(injectVaultSidecar)
 
 	mcfg := mutatingwh.WebhookConfig{
@@ -298,12 +319,12 @@ func main() {
 	metricsRec := metrics.NewPrometheus(reg)
 	wh, err := mutatingwh.NewWebhook(mcfg, pm, nil, metricsRec, logger)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating webhook: %s", err)
+		logger.Errorf("Error creating webhook: %v", err)
 		os.Exit(1)
 	}
 	whHandler, err := whhttp.HandlerFor(wh)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating webhook handler: %s", err)
+		logger.Errorf("Error creating webhook handler: %v", err)
 		os.Exit(1)
 	}
 	webhookError := make(chan error)
@@ -316,11 +337,11 @@ func main() {
 		metricsError <- http.ListenAndServe(cfg.metricsAddr, promHandler)
 	}()
 	if <-webhookError != nil {
-		fmt.Fprintf(os.Stderr, "error serving webhook: %s", <-webhookError)
+		logger.Errorf("Error serving webhook: %v", <-webhookError)
 		os.Exit(1)
 	}
 	if <-metricsError != nil {
-		fmt.Fprintf(os.Stderr, "error serving metrics: %s", <-metricsError)
+		logger.Errorf("Error serving metrics: %v", <-metricsError)
 		os.Exit(1)
 	}
 }
