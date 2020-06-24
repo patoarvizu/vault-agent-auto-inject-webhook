@@ -307,7 +307,7 @@ func main() {
 			}
 		}
 	}()
-	go w.Start(time.Millisecond * 100)
+	go w.Start(time.Second * 5)
 
 	pm := mutatingwh.MutatorFunc(injectVaultSidecar)
 
