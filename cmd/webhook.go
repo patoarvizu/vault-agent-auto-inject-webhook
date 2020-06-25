@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/radovskyb/watcher"
 	whhttp "github.com/slok/kubewebhook/pkg/http"
 	"github.com/slok/kubewebhook/pkg/log"
 	mutatingwh "github.com/slok/kubewebhook/pkg/webhook/mutating"
@@ -17,7 +19,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/radovskyb/watcher"
 	"github.com/slok/kubewebhook/pkg/observability/metrics"
 )
 
@@ -51,6 +52,7 @@ type webhookCfg struct {
 
 var cfg = &webhookCfg{}
 var injectionMode string
+var cachedCertificate tls.Certificate
 
 func getServiceAccountMount(containers []corev1.Container) (serviceAccountMount corev1.VolumeMount) {
 mountSearch:
@@ -292,6 +294,7 @@ func main() {
 
 	w := watcher.New()
 	defer w.Close()
+	w.SetMaxEvents(1)
 	w.FilterOps(watcher.Write)
 	err := w.Add(cfg.certFile)
 	if err != nil {
@@ -301,13 +304,18 @@ func main() {
 		for {
 			select {
 			case <-w.Event:
-				os.Exit(0)
+				err = cacheCertificate(cfg.certFile, cfg.keyFile)
+				if err != nil {
+					logger.Errorf("Error refreshing certificate: %v", err)
+					os.Exit(1)
+				}
 			case <-w.Closed:
-				return
+				logger.Errorf("Certificate file watch closed")
+				os.Exit(1)
 			}
 		}
 	}()
-	go w.Start(time.Second * 5)
+	go w.Start(time.Millisecond * 100)
 
 	pm := mutatingwh.MutatorFunc(injectVaultSidecar)
 
@@ -329,7 +337,13 @@ func main() {
 	}
 	webhookError := make(chan error)
 	go func() {
-		webhookError <- http.ListenAndServeTLS(cfg.addr, cfg.certFile, cfg.keyFile, whHandler)
+		err = cacheCertificate(cfg.certFile, cfg.keyFile)
+		if err != nil {
+			logger.Errorf("Error loading certificate: %v", err)
+			os.Exit(1)
+		}
+		server := http.Server{Addr: cfg.addr, Handler: whHandler, TLSConfig: &tls.Config{GetCertificate: getCertificate}}
+		webhookError <- server.ListenAndServeTLS(cfg.certFile, cfg.keyFile)
 	}()
 	metricsError := make(chan error)
 	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
@@ -344,4 +358,17 @@ func main() {
 		logger.Errorf("Error serving metrics: %v", <-metricsError)
 		os.Exit(1)
 	}
+}
+
+func cacheCertificate(certfile, keyfile string) error {
+	cert, err := tls.LoadX509KeyPair(certfile, keyfile)
+	if err != nil {
+		return err
+	}
+	cachedCertificate = cert
+	return nil
+}
+
+func getCertificate(chi *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return &cachedCertificate, nil
 }

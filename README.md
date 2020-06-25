@@ -141,9 +141,9 @@ The webhook will also expose Prometheus-style metrics on port HTTP/8081 (unless 
 
 ### Auto-reloading certificate
 
-The server does a rudimentary reload if the underlying TLS certificate (indicated by the `-tls-cert-file` flag) on disk is modified. This is helpful when using automatic certificate provisioners like cert-manager that will do automatic rotation of the certificates but can't control the lifecycle of the workloads using the certificate.
+The server performs a hot reload if the underlying TLS certificate (indicated by the `-tls-cert-file` flag) on disk is modified. This is helpful when using automatic certificate provisioners like cert-manager that will do automatic rotation of the certificates but can't control the lifecycle of the workloads using the certificate.
 
-The way this is achieved is by using the [radovskyb/watcher](https://github.com/radovskyb/watcher) library to listen for changes on the file and exiting with a `0` if the file changes, to force Kubernetes to restart the workload.
+The way this is achieved is by initially loading the certificate and keeping it in a local cache, then using the [radovskyb/watcher](https://github.com/radovskyb/watcher) library to watch for changes on the file and updating the cached version if the file changes.
 
 ## For security nerds
 
