@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/radovskyb/watcher"
 	whhttp "github.com/slok/kubewebhook/pkg/http"
 	"github.com/slok/kubewebhook/pkg/log"
 	mutatingwh "github.com/slok/kubewebhook/pkg/webhook/mutating"
@@ -49,6 +52,7 @@ type webhookCfg struct {
 
 var cfg = &webhookCfg{}
 var injectionMode string
+var cachedCertificate tls.Certificate
 
 func getServiceAccountMount(containers []corev1.Container) (serviceAccountMount corev1.VolumeMount) {
 mountSearch:
@@ -288,6 +292,31 @@ func main() {
 
 	fl.Parse(os.Args[1:])
 
+	w := watcher.New()
+	defer w.Close()
+	w.SetMaxEvents(1)
+	w.FilterOps(watcher.Write)
+	err := w.Add(cfg.certFile)
+	if err != nil {
+		logger.Errorf("Error: %v", err)
+	}
+	go func() {
+		for {
+			select {
+			case <-w.Event:
+				err = cacheCertificate(cfg.certFile, cfg.keyFile)
+				if err != nil {
+					logger.Errorf("Error refreshing certificate: %v", err)
+					os.Exit(1)
+				}
+			case <-w.Closed:
+				logger.Errorf("Certificate file watch closed")
+				os.Exit(1)
+			}
+		}
+	}()
+	go w.Start(time.Millisecond * 100)
+
 	pm := mutatingwh.MutatorFunc(injectVaultSidecar)
 
 	mcfg := mutatingwh.WebhookConfig{
@@ -298,17 +327,23 @@ func main() {
 	metricsRec := metrics.NewPrometheus(reg)
 	wh, err := mutatingwh.NewWebhook(mcfg, pm, nil, metricsRec, logger)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating webhook: %s", err)
+		logger.Errorf("Error creating webhook: %v", err)
 		os.Exit(1)
 	}
 	whHandler, err := whhttp.HandlerFor(wh)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating webhook handler: %s", err)
+		logger.Errorf("Error creating webhook handler: %v", err)
 		os.Exit(1)
 	}
 	webhookError := make(chan error)
 	go func() {
-		webhookError <- http.ListenAndServeTLS(cfg.addr, cfg.certFile, cfg.keyFile, whHandler)
+		err = cacheCertificate(cfg.certFile, cfg.keyFile)
+		if err != nil {
+			logger.Errorf("Error loading certificate: %v", err)
+			os.Exit(1)
+		}
+		server := http.Server{Addr: cfg.addr, Handler: whHandler, TLSConfig: &tls.Config{GetCertificate: getCertificate}}
+		webhookError <- server.ListenAndServeTLS(cfg.certFile, cfg.keyFile)
 	}()
 	metricsError := make(chan error)
 	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
@@ -316,11 +351,24 @@ func main() {
 		metricsError <- http.ListenAndServe(cfg.metricsAddr, promHandler)
 	}()
 	if <-webhookError != nil {
-		fmt.Fprintf(os.Stderr, "error serving webhook: %s", <-webhookError)
+		logger.Errorf("Error serving webhook: %v", <-webhookError)
 		os.Exit(1)
 	}
 	if <-metricsError != nil {
-		fmt.Fprintf(os.Stderr, "error serving metrics: %s", <-metricsError)
+		logger.Errorf("Error serving metrics: %v", <-metricsError)
 		os.Exit(1)
 	}
+}
+
+func cacheCertificate(certfile, keyfile string) error {
+	cert, err := tls.LoadX509KeyPair(certfile, keyfile)
+	if err != nil {
+		return err
+	}
+	cachedCertificate = cert
+	return nil
+}
+
+func getCertificate(chi *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return &cachedCertificate, nil
 }

@@ -13,6 +13,7 @@
         - [Auto-mount CA cert](#auto-mount-ca-cert)
         - [Init containers](#init-containers)
         - [Metrics](#metrics)
+        - [Auto-reloading certificate](#auto-reloading-certificate)
     - [For security nerds](#for-security-nerds)
         - [Docker images are signed and published to Docker Hub's Notary server](#docker-images-are-signed-and-published-to-docker-hubs-notary-server)
         - [Docker images are labeled with Git and GPG metadata](#docker-images-are-labeled-with-git-and-gpg-metadata)
@@ -137,6 +138,12 @@ Usually, a given config file will only be suitable for either long-lived sidecar
 ### Metrics
 
 The webhook will also expose Prometheus-style metrics on port HTTP/8081 (unless overwritten with `-metrics-addr`), ready to be scraped. The metrics are provided by the underlying [slok/kubewebhook](https://github.com/slok/kubewebhook) framework and include `admission_reviews_total`, `admission_review_errors_total`, and `admission_review_duration_seconds`.
+
+### Auto-reloading certificate
+
+The server performs a hot reload if the underlying TLS certificate (indicated by the `-tls-cert-file` flag) on disk is modified. This is helpful when using automatic certificate provisioners like cert-manager that will do automatic rotation of the certificates but can't control the lifecycle of the workloads using the certificate.
+
+The way this is achieved is by initially loading the certificate and keeping it in a local cache, then using the [radovskyb/watcher](https://github.com/radovskyb/watcher) library to watch for changes on the file and updating the cached version if the file changes.
 
 ## For security nerds
 

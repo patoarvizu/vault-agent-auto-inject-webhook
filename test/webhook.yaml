@@ -10,8 +10,8 @@ metadata:
   namespace: vault
 spec:
   secretName: vault-agent-auto-inject-webhook
-  duration: 720h
-  renewBefore: 360h
+  duration: 10m
+  renewBefore: 2m
   commonName: vault-agent-auto-inject-webhook
   dnsNames:
   - vault-agent-auto-inject-webhook
