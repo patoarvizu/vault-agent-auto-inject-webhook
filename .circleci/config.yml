@@ -49,7 +49,6 @@ jobs:
           command: |
             export KUBECONFIG=~/.k3d/k3s-default-config
             k3d cluster create --image rancher/k3s:v1.0.0 --wait
-            k3d import-images patoarvizu/vault-agent-auto-inject-webhook:latest
             k3d image import patoarvizu/vault-agent-auto-inject-webhook:latest
             kubectl apply -f https://raw.githubusercontent.com/patoarvizu/common-manifests/master/cert-manager/cert-manager-v0.14.1.yaml
             kubectl rollout status -n cert-manager deployment/cert-manager-webhook -w
