@@ -5,19 +5,20 @@
 <!-- TOC -->
 
 - [Vault agent auto-inject webhook](#vault-agent-auto-inject-webhook)
-    - [Intro](#intro)
-        - [Running the webhook](#running-the-webhook)
-        - [Configuring the webhook](#configuring-the-webhook)
-        - [Webhook command-line flags](#webhook-command-line-flags)
-        - [ConfigMap](#configmap)
-        - [Auto-mount CA cert](#auto-mount-ca-cert)
-        - [Init containers](#init-containers)
-        - [Metrics](#metrics)
-        - [Auto-reloading certificate](#auto-reloading-certificate)
-    - [For security nerds](#for-security-nerds)
-        - [Docker images are signed and published to Docker Hub's Notary server](#docker-images-are-signed-and-published-to-docker-hubs-notary-server)
-        - [Docker images are labeled with Git and GPG metadata](#docker-images-are-labeled-with-git-and-gpg-metadata)
-    - [Help wanted!](#help-wanted)
+  - [Intro](#intro)
+    - [Running the webhook](#running-the-webhook)
+    - [Configuring the webhook](#configuring-the-webhook)
+    - [Webhook command-line flags](#webhook-command-line-flags)
+    - [ConfigMap](#configmap)
+    - [Auto-mount CA cert](#auto-mount-ca-cert)
+    - [Init containers](#init-containers)
+    - [Metrics](#metrics)
+    - [Auto-reloading certificate](#auto-reloading-certificate)
+  - [For security nerds](#for-security-nerds)
+    - [Docker images are signed and published to Docker Hub's Notary server](#docker-images-are-signed-and-published-to-docker-hubs-notary-server)
+    - [Docker images are labeled with Git and GPG metadata](#docker-images-are-labeled-with-git-and-gpg-metadata)
+  - [Multi-architecture images](#multi-architecture-images)
+  - [Help wanted!](#help-wanted)
 
 <!-- /TOC -->
 
@@ -172,6 +173,16 @@ Here's the list of included Docker labels:
 - `GIT_COMMIT`
 - `GIT_TAG`
 - `SIGNATURE_KEY`
+
+## Multi-architecture images
+
+Manifests published with the semver tag (e.g. `patoarvizu/vault-agent-auto-inject-webhook:v0.5.0`), as well as `latest` are multi-architecture manifest lists. In addition to those, there are architecture-specific tags that correspond to an image manifest directly, tagged with the corresponding architecture as a suffix, e.g. `v0.15.0-amd64`. Both types (image manifests or manifest lists) are signed with Notary as described above.
+
+Here's the list of architectures the images are being built for, and their corresponding suffixes for images:
+
+- `linux/amd64`, `-amd64`
+- `linux/arm64`, `-arm64`
+- `linux/arm/v7`, `arm7`
 
 ## Help wanted!
 
