@@ -13,6 +13,7 @@ jobs:
       NOTARY_VERSION: 0.6.1
       GOPATH: /home/circleci/go
       GO111MODULE: "on"
+      DOCKER_CLI_EXPERIMENTAL: enabled
     working_directory: /home/circleci/go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook
     steps:
       - checkout
