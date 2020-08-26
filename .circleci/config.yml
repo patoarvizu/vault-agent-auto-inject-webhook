@@ -38,7 +38,7 @@ jobs:
       - run:
           name: Install k3d
           command: |
-            wget -q -O - https://raw.githubusercontent.com/rancher/k3d/v1.3.1/install.sh | bash
+            wget -q -O - https://raw.githubusercontent.com/rancher/k3d/main/install.sh | TAG=v3.0.0 bash
       - run:
           name: Build image
           command: |
@@ -47,9 +47,10 @@ jobs:
       - run:
           name: Run tests
           command: |
-            k3d create --image rancher/k3s:v1.0.0 -t=0
-            export KUBECONFIG="$(k3d get-kubeconfig)"
+            export KUBECONFIG=~/.k3d/k3s-default-config
+            k3d cluster create --image rancher/k3s:v1.0.0 --wait
             k3d import-images patoarvizu/vault-agent-auto-inject-webhook:latest
+            k3d image import patoarvizu/vault-agent-auto-inject-webhook:latest
             kubectl apply -f https://raw.githubusercontent.com/patoarvizu/common-manifests/master/cert-manager/cert-manager-v0.14.1.yaml
             kubectl rollout status -n cert-manager deployment/cert-manager-webhook -w
             kubectl apply -f https://raw.githubusercontent.com/patoarvizu/common-manifests/master/cert-manager/cluster-issuer.yaml
