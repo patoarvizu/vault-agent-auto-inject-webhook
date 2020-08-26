@@ -1,12 +1,14 @@
 FROM golang:1.12 as builder
+ARG TARGETARCH
+ARG TARGETVARIANT
 
 COPY . /go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook/
 
 WORKDIR /go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook/
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /vault-agent-auto-inject-webhook /go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook/cmd/webhook.go
+RUN CGO_ENABLED=0 GOOS=linux GOARM=$(if [ "$TARGETVARIANT" = "v7" ]; then echo "7"; fi) GOARCH=$TARGETARCH go build -o /vault-agent-auto-inject-webhook /go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook/cmd/webhook.go
 
-FROM alpine:3.11.3
+FROM alpine:3.12.0
 
 ARG GIT_COMMIT="unspecified"
 LABEL GIT_COMMIT=$GIT_COMMIT
