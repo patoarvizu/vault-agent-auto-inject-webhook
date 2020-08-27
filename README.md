@@ -1,5 +1,6 @@
 # Vault agent auto-inject webhook
 
+![Black Lives Matter](https://img.shields.io/badge/BLM-Black%20Lives%20Matter-black)
 ![CircleCI](https://img.shields.io/circleci/build/github/patoarvizu/vault-agent-auto-inject-webhook.svg?label=CircleCI) ![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/patoarvizu/vault-agent-auto-inject-webhook.svg) ![Docker Pulls](https://img.shields.io/docker/pulls/patoarvizu/vault-agent-auto-inject-webhook.svg) ![Keybase BTC](https://img.shields.io/keybase/btc/patoarvizu.svg) ![Keybase PGP](https://img.shields.io/keybase/pgp/patoarvizu.svg) ![GitHub](https://img.shields.io/github/license/patoarvizu/vault-agent-auto-inject-webhook.svg)
 
 <!-- TOC -->
