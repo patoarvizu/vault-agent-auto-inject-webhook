@@ -1,0 +1,12 @@
+apiVersion: v1
+entries:
+  vault-agent-auto-inject-webhook:
+  - apiVersion: v1
+    created: "2020-09-15T18:15:54.623088-04:00"
+    description: Vault agent auto-inject webhook
+    digest: 396afdc539b4cea401c86583ef3bef46cddba5a349cc3215cb8232b06d17f177
+    name: vault-agent-auto-inject-webhook
+    urls:
+    - https://patoarvizu.github.io/vault-agent-auto-inject-webhook/vault-agent-auto-inject-webhook-0.0.0.tgz
+    version: 0.0.0
+generated: "2020-09-15T18:15:54.618164-04:00"

@@ -64,6 +64,7 @@ podDisruptionBudget:
   # podDisruptionBudget.availability: -- The availability criteria to use for the `PodDisruptionBudget` object.
   # This map only supports one key, either `maxUnavailable` or `minAvailable`.
   availability:
+    # podDisruptionBudget.availability.maxUnavailable -- The default availability is set to `maxUnavailable: 0` (if `podDisruptionBudget.enable` is `true`).
     maxUnavailable: 0
 # namespaceSelector -- A label selector expression to determine what namespaces should be in scope for the mutating webhook.
 namespaceSelector:
