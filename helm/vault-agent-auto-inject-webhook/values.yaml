@@ -1,56 +1,92 @@
 certManager:
+  # certManager.injectSecret -- Enables auto-injection of a certificate managed by [cert-manager](https://github.com/jetstack/cert-manager).
   injectSecret: true
+  # certManager.apiVersion -- The `apiVersion` of the `Certificate` object created by the chart.
+  # It depends on the versions made available by the specific cert-manager running on the cluster.
   apiVersion: cert-manager.io/v1alpha2
+  # certManager.duration -- The value to be set directly on the `duration` field of the `Certificate`.
   duration: 2160h
+  # certManager.renewBefore -- The value to be set directly on the `renewBefore` field of the `Certificate`.
   renewBefore: 360h
+  # certManager.issuerRef -- The `name` and `kind` of the cert-manager issuer to be used.
   issuerRef:
     name: selfsigning-issuer
     kind: ClusterIssuer
 
 serviceAccount:
+  # serviceAccount.name -- The name of the `ServiceAccount` to be created.
   name: vault-agent-webhook
 
 flags:
+  # flags.annotationPrefix -- The value to be set on the `-annotation-prefix` flag.
   annotationPrefix: vault.patoarvizu.dev
+  # flags.targetVaultAddress -- The value to be set on the `-target-vault-address` flag.
   targetVaultAddress:
+  # flags.kubernetesAuthPath -- The value to be set on the `-kubernetes-auth-path` flag.
   kubernetesAuthPath: auth/kubernetes/login
+  # flags.vaultImageVersion -- The value to be set on the `-vault-image-version` flag.
   vaultImageVersion: 1.4.0
+  # flags.defaultConfigMapName -- The value to be set on the `-default-config-map-name` flag.
   defaultConfigMapName: vault-agent-config
+  # flags.mountCACertSecret -- The value to be set on the `-mount-ca-cert-secret` flag.
   mountCACertSecret: true
+  # flags.caCertSecretName -- The value to be set on the `-ca-cert-secret-name` flag.
   caCertSecretName: vault-tls
   resources:
     requests:
+      # flags.resources.requests.cpu -- The value to be set on the `-cpu-request` flag.
       cpu: 50m
+      # flags.resources.requests.memory -- The value to be set on the `-memory-request` flag.
       memory: 128Mi
     limits:
+      # flags.resources.limits.cpu -- The value to be set on the `-cpu-limit` flag.
       cpu: 100m
+      # flags.resources.limits.memory -- The value to be set on the `-memory-limit` flag.
       memory: 256Mi
 
+# replicas -- The number of replicas of the webhook to run.
 replicas: 3
+# imageVersion -- The image version used for the webhook.
 imageVersion: v0.5.0
+# imagePullPolicy -- The imagePullPolicy to be used on the webhook.
 imagePullPolicy: IfNotPresent
+# failurePolicy -- The value to set directly on the `failurePolicy` of the `MutatingWebhookConfiguration`. Valid values are `Fail` or `Ignore`.
 failurePolicy: Ignore
+# caBundle -- The base64-encoded public CA certificate to be set on the `MutatingWebhookConfiguration`.
+# Note that it defaults to `Cg==` which is a base64-encoded empty string.
+# If this value is not automatically set by cert-manager, or some other mutating webhook, this should be set explicitly.
 caBundle: Cg==
 
 podDisruptionBudget:
+  # podDisruptionBudget.enable -- Create a `PodDisruptionBudget` object to control replication availability.
+  # You can find more info about disruption budgets in Kubernetes [here](https://kubernetes.io/docs/tasks/run-application/configure-pdb/). 
   enable: true
+  # podDisruptionBudget.availability: -- The availability criteria to use for the `PodDisruptionBudget` object.
+  # This map only supports one key, either `maxUnavailable` or `minAvailable`.
   availability:
     maxUnavailable: 0
-
+# namespaceSelector -- A label selector expression to determine what namespaces should be in scope for the mutating webhook.
 namespaceSelector:
   matchExpressions:
     - key: vault-control-plane
       operator: DoesNotExist
 
 tls:
+  # tls.mountPath -- The path where the CA cert from the secret should be mounted.
   mountPath: /tls
+  # tls.secretName -- The name of the `Secret` from which the CA cert will be mounted. This value is ignored if `.certManager.injectSecret` is set to `true`.
   secretName: vault-agent-webhook
 
 hpa:
+  # hpa.enable -- Create a `HorizontalPodAutoscaler` object to control dynamic replication of the webhook. If this is set to `false`, all values under `hpa` are ignored`.
   enable: false
+  # hpa.apiVersion -- The `apiVersion` of the `HorizontalPodAutoscaler` to create. The metrics configuration options vary depending on this value.
   apiVersion: autoscaling/v2beta2
+  # hpa.minReplicas -- The minimum number of replicas to attempt to maintain at all times.
   minReplicas: 3
+  # hpa.maxReplicas -- The maximum number of replicas to attempt to maintain at all times.
   maxReplicas: 20
+  # hpa.metricsScalingConfiguration -- The scaling configuration to be injected directly into the `HorizontalPodAutoscaler` object.
   metricsScalingConfiguration:
   - type: Resource
     resource:
@@ -60,45 +96,5 @@ hpa:
         type: Utilization
 
 prometheusMonitoring:
+  # prometheusMonitoring.enable -- Create the `Service` and `ServiceMonitor` objects to enable Prometheus monitoring on the webhook.
   enable: true
-
-# flags:
-#   # flags.annotationPrefix -- The value to be set on the `--annotation-prefix` flag.
-#   annotationPrefix: vault.patoarvizu.dev
-#   # flags.boundRolesToAllNamespaces -- If set to `true` the `--bound-roles-to-all-namespaces` flag will be set.
-#   boundRolesToAllNamespaces: false
-#   # flags.targetVaultName -- The value to be set on the `--target-vault-name` flag.
-#   targetVaultName: vault
-#   # flags.autoConfigureAnnotations -- The value to be set on the `--auto-configure-annotation` flag.
-#   autoConfigureAnnotation: auto-configure
-#   # flags.autoConfigureDBCredsAnnotation -- The value to be set on the `--auto-configuredb-creds-annotation` flag.
-#   autoConfigureDBCredsAnnotation: db-dynamic-creds
-#   # flags.tokenTTL -- The value to be set on the `--token-ttl` flag.
-#   tokenTTL: 5m
-# # imageVersion -- The image version used for the operator.
-# imageVersion: latest
-# # imagePullPolicy -- The imagePullPolicy to be used on the operator.
-# imagePullPolicy: IfNotPresent
-# serviceAccount:
-#   # serviceAccount.name -- The name of the `ServiceAccount` to be created.
-#   name: vault-dynamic-configuration-operator
-# # watchNamespace -- The value to be set on the `WATCH_NAMESPACE` environment variable.
-# watchNamespace: ""
-# # defaultConfiguration -- The values to be used for the default `vault-dynamic-configuration` `ConfigMap`.
-# defaultConfiguration:
-#   # defaultConfiguration.policyTemplate -- Corresponds to the `policy-template` field of the default `ConfigMap`.
-#   policyTemplate: |
-#     path "secret/{{ .Name }}" {
-#       capabilities = ["read"]
-#     }
-#   # defaultConfiguration.dbUserCreationStatement  -- Corresponds to the `db-user-creation-statement` field of the default `ConfigMap`.
-#   dbUserCreationStatement: "CREATE USER '{{name}}'@'%' IDENTIFIED BY '{{password}}'; GRANT ALL ON *.* TO '{{name}}'@'%';"
-#   # defaultConfiguration.dbDefaultTTL  -- Corresponds to the `db-default-ttl` field of the default `ConfigMap`.
-#   dbDefaultTTL: 1h
-#   # defaultConfiguration.dbMaxTTL  -- Corresponds to the `db-max-ttl` field of the default `ConfigMap`.
-#   dbMaxTTL: 24h
-# prometheusMonitoring:
-#   # prometheusMonitoring.enable -- Create the `Service` and `ServiceMonitor` objects to enable Prometheus monitoring on the operator.
-#   enable: true
-# # resources -- (object) The resources requests/limits to be set on the deployment pod spec template.
-# resources:
