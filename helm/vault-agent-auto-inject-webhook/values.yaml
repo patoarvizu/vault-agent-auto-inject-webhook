@@ -10,12 +10,24 @@ certManager:
 serviceAccount:
   name: vault-agent-webhook
 
+flags:
+  annotationPrefix: vault.patoarvizu.dev
+  targetVaultAddress:
+  kubernetesAuthPath: auth/kubernetes/login
+  vaultImageVersion: 1.4.0
+  defaultConfigMapName: vault-agent-config
+  mountCACertSecret: true
+  caCertSecretName: vault-tls
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
 replicas: 3
 imageVersion: v0.5.0
-vaultImageVersion: 1.4.0
-annotationPrefix: vault.patoarvizu.dev
-targetVaultAddress: https://vault:8200
-mountCACertSecret: true
 imagePullPolicy: IfNotPresent
 failurePolicy: Ignore
 caBundle: Cg==

@@ -25,13 +25,27 @@ spec:
         - {{ .Values.tls.mountPath }}/tls.crt
         - -tls-key-file
         - {{ .Values.tls.mountPath }}/tls.key
+        - -ca-cert-secret-name
+        - {{ .Values.flags.caCertSecretName }}
         - -vault-image-version
-        - {{ .Values.vaultImageVersion | quote }}
+        - {{ .Values.flags.vaultImageVersion }}
         - -annotation-prefix
-        - {{ .Values.annotationPrefix }}
+        - {{ .Values.flags.annotationPrefix }}
         - -target-vault-address
-        - {{ .Values.targetVaultAddress }}
-        {{- if .Values.mountCACertSecret }}
+        - {{ default .Values.flags.targetVaultAddress (printf "https://vault.%s.svc:8200" .Release.Namespace) }}
+        - -kubernetes-auth-path
+        - {{ .Values.flags.kubernetesAuthPath }}
+        - -default-config-map-name
+        - {{ .Values.flags.defaultConfigMapName }}
+        - -cpu-request
+        - {{ .Values.flags.resources.requests.cpu }}
+        - -cpu-limit
+        - {{ .Values.flags.resources.limits.cpu }}
+        - -memory-request
+        - {{ .Values.flags.resources.requests.memory }}
+        - -memory-limit
+        - {{ .Values.flags.resources.limits.memory }}
+        {{- if .Values.flags.mountCACertSecret }}
         - -mount-ca-cert-secret
         {{- end }}
         ports:
