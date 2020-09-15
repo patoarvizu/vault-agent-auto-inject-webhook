@@ -5,20 +5,6 @@ metadata:
   labels:
     vault-agent-auto-inject-webhook: "true"
 ---
-apiVersion: cert-manager.io/v1alpha2
-kind: Certificate
-metadata:
-  name: vault-tls
-  namespace: test
-spec:
-  secretName: vault-tls
-  duration: 1h
-  renewBefore: 30m
-  commonName: vault
-  issuerRef:
-    name: selfsigning-issuer
-    kind: ClusterIssuer
----
 apiVersion: v1
 kind: ConfigMap
 metadata:

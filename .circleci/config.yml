@@ -41,6 +41,13 @@ jobs:
           command: |
             wget -q -O - https://raw.githubusercontent.com/rancher/k3d/main/install.sh | TAG=v3.0.0 bash
       - run:
+          name: Install Helm
+          command: |
+            wget https://get.helm.sh/helm-v3.3.1-linux-amd64.tar.gz
+            tar -zxvf helm-v3.3.1-linux-amd64.tar.gz
+            chmod +x linux-amd64/helm
+            sudo mv linux-amd64/helm /usr/local/bin/
+      - run:
           name: Build image
           command: |
             go mod vendor
@@ -54,7 +61,8 @@ jobs:
             kubectl apply -f https://raw.githubusercontent.com/patoarvizu/common-manifests/master/cert-manager/cert-manager-v0.14.1.yaml
             kubectl rollout status -n cert-manager deployment/cert-manager-webhook -w
             kubectl apply -f https://raw.githubusercontent.com/patoarvizu/common-manifests/master/cert-manager/cluster-issuer.yaml
-            kubectl apply -f test/webhook.yaml
+            kubectl create ns vault
+            helm install vault-agent-webhook helm/vault-agent-auto-inject-webhook/ -n vault --set prometheusMonitoring.enable=false
             while [ "$(kubectl -n vault get deployment vault-agent-auto-inject-webhook -o jsonpath={.status.readyReplicas})" != "1" ]; do
               sleep 1
             done

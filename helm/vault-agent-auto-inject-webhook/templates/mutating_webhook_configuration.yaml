@@ -1,0 +1,30 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: vault-agent-webhook
+  labels:
+    app: vault-agent-webhook
+  {{- if .Values.certManager.injectSecret }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/vault-agent-webhook
+  {{- end }}
+webhooks:
+- name: vault-agent-webhook.vault.asapp.engineering
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - pods
+  failurePolicy: {{ .Values.failurePolicy }}
+  namespaceSelector: {{ toYaml .Values.namespaceSelector | nindent 4}}
+  clientConfig:
+    caBundle: {{ .Values.caBundle }}
+    service:
+      name: vault-agent-webhook
+      namespace: {{ .Release.Namespace }}
+      path: /

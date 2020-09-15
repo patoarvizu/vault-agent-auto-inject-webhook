@@ -1,0 +1,19 @@
+{{- if .Values.certManager.injectSecret }}
+apiVersion: {{ .Values.certManager.apiVersion }}
+kind: Certificate
+metadata:
+  name: vault-agent-webhook
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: vault-agent-webhook
+  duration: {{ .Values.certManager.duration }}
+  renewBefore: {{ .Values.certManager.renewBefore }}
+  commonName: vault-agent-webhook
+  dnsNames:
+  - vault-agent-webhook
+  - vault-agent-webhook.{{ .Release.Namespace }}
+  - vault-agent-webhook.{{ .Release.Namespace }}.svc
+  issuerRef:
+    name: {{ .Values.certManager.issuerRef.name }}
+    kind: {{ .Values.certManager.issuerRef.kind }}
+{{- end }}

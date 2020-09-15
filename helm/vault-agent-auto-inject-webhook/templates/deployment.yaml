@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault-agent-webhook
+  namespace: {{ .Release.Namespace }}
+spec:
+  {{- if not .Values.hpa.enable }}
+  replicas: {{ .Values.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: vault-agent-webhook
+  template:
+    metadata:
+      labels:
+        app: vault-agent-webhook
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+      - name: vault-agent-webhook
+        image: patoarvizu/vault-agent-auto-inject-webhook:{{ .Values.imageVersion }}
+        command:
+        - /vault-agent-auto-inject-webhook
+        - -tls-cert-file
+        - {{ .Values.tls.mountPath }}/tls.crt
+        - -tls-key-file
+        - {{ .Values.tls.mountPath }}/tls.key
+        - -vault-image-version
+        - {{ .Values.vaultImageVersion | quote }}
+        - -annotation-prefix
+        - {{ .Values.annotationPrefix }}
+        - -target-vault-address
+        - {{ .Values.targetVaultAddress }}
+        {{- if .Values.mountCACertSecret }}
+        - -mount-ca-cert-secret
+        {{- end }}
+        ports:
+        - name: https
+          containerPort: 4443
+        - name: metrics
+          containerPort: 8081
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        volumeMounts:
+        - name: tls
+          mountPath: {{ .Values.tls.mountPath }}
+      volumes:
+      - name: tls
+        secret:
+          {{- if .Values.certManager.injectSecret }}
+          secretName: vault-agent-webhook
+          {{- else }}
+          secretName: {{ .Values.tls.secretName }}
+          {{- end }}

@@ -1,0 +1,92 @@
+certManager:
+  injectSecret: true
+  apiVersion: cert-manager.io/v1alpha2
+  duration: 2160h
+  renewBefore: 360h
+  issuerRef:
+    name: selfsigning-issuer
+    kind: ClusterIssuer
+
+serviceAccount:
+  name: vault-agent-webhook
+
+replicas: 3
+imageVersion: v0.5.0
+vaultImageVersion: 1.4.0
+annotationPrefix: vault.patoarvizu.dev
+targetVaultAddress: https://vault:8200
+mountCACertSecret: true
+imagePullPolicy: IfNotPresent
+failurePolicy: Ignore
+caBundle: Cg==
+
+podDisruptionBudget:
+  enable: true
+  availability:
+    maxUnavailable: 0
+
+namespaceSelector:
+  matchExpressions:
+    - key: vault-control-plane
+      operator: DoesNotExist
+
+tls:
+  mountPath: /tls
+  secretName: vault-agent-webhook
+
+hpa:
+  enable: false
+  apiVersion: autoscaling/v2beta2
+  minReplicas: 3
+  maxReplicas: 20
+  metricsScalingConfiguration:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        averageUtilization: 80
+        type: Utilization
+
+prometheusMonitoring:
+  enable: true
+
+# flags:
+#   # flags.annotationPrefix -- The value to be set on the `--annotation-prefix` flag.
+#   annotationPrefix: vault.patoarvizu.dev
+#   # flags.boundRolesToAllNamespaces -- If set to `true` the `--bound-roles-to-all-namespaces` flag will be set.
+#   boundRolesToAllNamespaces: false
+#   # flags.targetVaultName -- The value to be set on the `--target-vault-name` flag.
+#   targetVaultName: vault
+#   # flags.autoConfigureAnnotations -- The value to be set on the `--auto-configure-annotation` flag.
+#   autoConfigureAnnotation: auto-configure
+#   # flags.autoConfigureDBCredsAnnotation -- The value to be set on the `--auto-configuredb-creds-annotation` flag.
+#   autoConfigureDBCredsAnnotation: db-dynamic-creds
+#   # flags.tokenTTL -- The value to be set on the `--token-ttl` flag.
+#   tokenTTL: 5m
+# # imageVersion -- The image version used for the operator.
+# imageVersion: latest
+# # imagePullPolicy -- The imagePullPolicy to be used on the operator.
+# imagePullPolicy: IfNotPresent
+# serviceAccount:
+#   # serviceAccount.name -- The name of the `ServiceAccount` to be created.
+#   name: vault-dynamic-configuration-operator
+# # watchNamespace -- The value to be set on the `WATCH_NAMESPACE` environment variable.
+# watchNamespace: ""
+# # defaultConfiguration -- The values to be used for the default `vault-dynamic-configuration` `ConfigMap`.
+# defaultConfiguration:
+#   # defaultConfiguration.policyTemplate -- Corresponds to the `policy-template` field of the default `ConfigMap`.
+#   policyTemplate: |
+#     path "secret/{{ .Name }}" {
+#       capabilities = ["read"]
+#     }
+#   # defaultConfiguration.dbUserCreationStatement  -- Corresponds to the `db-user-creation-statement` field of the default `ConfigMap`.
+#   dbUserCreationStatement: "CREATE USER '{{name}}'@'%' IDENTIFIED BY '{{password}}'; GRANT ALL ON *.* TO '{{name}}'@'%';"
+#   # defaultConfiguration.dbDefaultTTL  -- Corresponds to the `db-default-ttl` field of the default `ConfigMap`.
+#   dbDefaultTTL: 1h
+#   # defaultConfiguration.dbMaxTTL  -- Corresponds to the `db-max-ttl` field of the default `ConfigMap`.
+#   dbMaxTTL: 24h
+# prometheusMonitoring:
+#   # prometheusMonitoring.enable -- Create the `Service` and `ServiceMonitor` objects to enable Prometheus monitoring on the operator.
+#   enable: true
+# # resources -- (object) The resources requests/limits to be set on the deployment pod spec template.
+# resources:
