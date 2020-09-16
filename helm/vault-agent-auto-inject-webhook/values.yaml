@@ -1,0 +1,101 @@
+certManager:
+  # certManager.injectSecret -- Enables auto-injection of a certificate managed by [cert-manager](https://github.com/jetstack/cert-manager).
+  injectSecret: true
+  # certManager.apiVersion -- The `apiVersion` of the `Certificate` object created by the chart.
+  # It depends on the versions made available by the specific cert-manager running on the cluster.
+  apiVersion: cert-manager.io/v1alpha2
+  # certManager.duration -- The value to be set directly on the `duration` field of the `Certificate`.
+  duration: 2160h
+  # certManager.renewBefore -- The value to be set directly on the `renewBefore` field of the `Certificate`.
+  renewBefore: 360h
+  # certManager.issuerRef -- The `name` and `kind` of the cert-manager issuer to be used.
+  issuerRef:
+    name: selfsigning-issuer
+    kind: ClusterIssuer
+
+serviceAccount:
+  # serviceAccount.name -- The name of the `ServiceAccount` to be created.
+  name: vault-agent-webhook
+
+flags:
+  # flags.annotationPrefix -- The value to be set on the `-annotation-prefix` flag.
+  annotationPrefix: vault.patoarvizu.dev
+  # flags.targetVaultAddress -- The value to be set on the `-target-vault-address` flag.
+  targetVaultAddress:
+  # flags.kubernetesAuthPath -- The value to be set on the `-kubernetes-auth-path` flag.
+  kubernetesAuthPath: auth/kubernetes/login
+  # flags.vaultImageVersion -- The value to be set on the `-vault-image-version` flag.
+  vaultImageVersion: 1.4.0
+  # flags.defaultConfigMapName -- The value to be set on the `-default-config-map-name` flag.
+  defaultConfigMapName: vault-agent-config
+  # flags.mountCACertSecret -- The value to be set on the `-mount-ca-cert-secret` flag.
+  mountCACertSecret: true
+  # flags.caCertSecretName -- The value to be set on the `-ca-cert-secret-name` flag.
+  caCertSecretName: vault-tls
+  resources:
+    requests:
+      # flags.resources.requests.cpu -- The value to be set on the `-cpu-request` flag.
+      cpu: 50m
+      # flags.resources.requests.memory -- The value to be set on the `-memory-request` flag.
+      memory: 128Mi
+    limits:
+      # flags.resources.limits.cpu -- The value to be set on the `-cpu-limit` flag.
+      cpu: 100m
+      # flags.resources.limits.memory -- The value to be set on the `-memory-limit` flag.
+      memory: 256Mi
+
+# replicas -- The number of replicas of the webhook to run.
+replicas: 3
+# imageVersion -- The image version used for the webhook.
+imageVersion: v0.5.0
+# imagePullPolicy -- The imagePullPolicy to be used on the webhook.
+imagePullPolicy: IfNotPresent
+# failurePolicy -- The value to set directly on the `failurePolicy` of the `MutatingWebhookConfiguration`. Valid values are `Fail` or `Ignore`.
+failurePolicy: Ignore
+# caBundle -- The base64-encoded public CA certificate to be set on the `MutatingWebhookConfiguration`.
+# Note that it defaults to `Cg==` which is a base64-encoded empty string.
+# If this value is not automatically set by cert-manager, or some other mutating webhook, this should be set explicitly.
+caBundle: Cg==
+
+podDisruptionBudget:
+  # podDisruptionBudget.enable -- Create a `PodDisruptionBudget` object to control replication availability.
+  # You can find more info about disruption budgets in Kubernetes [here](https://kubernetes.io/docs/tasks/run-application/configure-pdb/). 
+  enable: true
+  # podDisruptionBudget.availability: -- The availability criteria to use for the `PodDisruptionBudget` object.
+  # This map only supports one key, either `maxUnavailable` or `minAvailable`.
+  availability:
+    # podDisruptionBudget.availability.maxUnavailable -- The default availability is set to `maxUnavailable: 0` (if `podDisruptionBudget.enable` is `true`).
+    maxUnavailable: 0
+# namespaceSelector -- A label selector expression to determine what namespaces should be in scope for the mutating webhook.
+namespaceSelector:
+  matchExpressions:
+    - key: vault-control-plane
+      operator: DoesNotExist
+
+tls:
+  # tls.mountPath -- The path where the CA cert from the secret should be mounted.
+  mountPath: /tls
+  # tls.secretName -- The name of the `Secret` from which the CA cert will be mounted. This value is ignored if `.certManager.injectSecret` is set to `true`.
+  secretName: vault-agent-webhook
+
+hpa:
+  # hpa.enable -- Create a `HorizontalPodAutoscaler` object to control dynamic replication of the webhook. If this is set to `false`, all values under `hpa` are ignored`.
+  enable: false
+  # hpa.apiVersion -- The `apiVersion` of the `HorizontalPodAutoscaler` to create. The metrics configuration options vary depending on this value.
+  apiVersion: autoscaling/v2beta2
+  # hpa.minReplicas -- The minimum number of replicas to attempt to maintain at all times.
+  minReplicas: 3
+  # hpa.maxReplicas -- The maximum number of replicas to attempt to maintain at all times.
+  maxReplicas: 20
+  # hpa.metricsScalingConfiguration -- The scaling configuration to be injected directly into the `HorizontalPodAutoscaler` object.
+  metricsScalingConfiguration:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        averageUtilization: 80
+        type: Utilization
+
+prometheusMonitoring:
+  # prometheusMonitoring.enable -- Create the `Service` and `ServiceMonitor` objects to enable Prometheus monitoring on the webhook.
+  enable: true
