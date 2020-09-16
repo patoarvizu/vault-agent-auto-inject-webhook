@@ -79,7 +79,7 @@ tls:
   secretName: vault-agent-webhook
 
 hpa:
-  # hpa.enable -- Create a `HorizontalPodAutoscaler` object to control dynamic replication of the webhook. If this is set to `false`, all values under `hpa` are ignored`.
+  # hpa.enable -- Create a `HorizontalPodAutoscaler` object to control dynamic replication of the webhook. If this is set to `false`, all values under `hpa` are ignored.
   enable: false
   # hpa.apiVersion -- The `apiVersion` of the `HorizontalPodAutoscaler` to create. The metrics configuration options vary depending on this value.
   apiVersion: autoscaling/v2beta2
