@@ -27,7 +27,7 @@ Vault agent auto-inject webhook
 | flags.targetVaultAddress | string | `nil` | The value to be set on the `-target-vault-address` flag. |
 | flags.vaultImageVersion | string | `"1.4.0"` | The value to be set on the `-vault-image-version` flag. |
 | hpa.apiVersion | string | `"autoscaling/v2beta2"` | The `apiVersion` of the `HorizontalPodAutoscaler` to create. The metrics configuration options vary depending on this value. |
-| hpa.enable | bool | `false` | Create a `HorizontalPodAutoscaler` object to control dynamic replication of the webhook. If this is set to `false`, all values under `hpa` are ignored`. |
+| hpa.enable | bool | `false` | Create a `HorizontalPodAutoscaler` object to control dynamic replication of the webhook. If this is set to `false`, all values under `hpa` are ignored. |
 | hpa.maxReplicas | int | `20` | The maximum number of replicas to attempt to maintain at all times. |
 | hpa.metricsScalingConfiguration | list | `[{"resource":{"name":"cpu","target":{"averageUtilization":80,"type":"Utilization"}},"type":"Resource"}]` | The scaling configuration to be injected directly into the `HorizontalPodAutoscaler` object. |
 | hpa.minReplicas | int | `3` | The minimum number of replicas to attempt to maintain at all times. |
