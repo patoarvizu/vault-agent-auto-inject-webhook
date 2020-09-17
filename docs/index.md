@@ -24,7 +24,7 @@ Vault agent auto-inject webhook
 | flags.resources.limits.memory | string | `"256Mi"` | The value to be set on the `-memory-limit` flag. |
 | flags.resources.requests.cpu | string | `"50m"` | The value to be set on the `-cpu-request` flag. |
 | flags.resources.requests.memory | string | `"128Mi"` | The value to be set on the `-memory-request` flag. |
-| flags.targetVaultAddress | string | `nil` | The value to be set on the `-target-vault-address` flag. |
+| flags.targetVaultAddress | string | `nil` | The value to be set on the `-target-vault-address` flag. If not specified, it will default to https://vault.{{ .Release.Namespace }}:8200. |
 | flags.vaultImageVersion | string | `"1.4.0"` | The value to be set on the `-vault-image-version` flag. |
 | hpa.apiVersion | string | `"autoscaling/v2beta2"` | The `apiVersion` of the `HorizontalPodAutoscaler` to create. The metrics configuration options vary depending on this value. |
 | hpa.enable | bool | `false` | Create a `HorizontalPodAutoscaler` object to control dynamic replication of the webhook. If this is set to `false`, all values under `hpa` are ignored. |

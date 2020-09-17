@@ -21,6 +21,7 @@ flags:
   # flags.annotationPrefix -- The value to be set on the `-annotation-prefix` flag.
   annotationPrefix: vault.patoarvizu.dev
   # flags.targetVaultAddress -- The value to be set on the `-target-vault-address` flag.
+  # If not specified, it will default to https://vault.{{ .Release.Namespace }}:8200.
   targetVaultAddress:
   # flags.kubernetesAuthPath -- The value to be set on the `-kubernetes-auth-path` flag.
   kubernetesAuthPath: auth/kubernetes/login

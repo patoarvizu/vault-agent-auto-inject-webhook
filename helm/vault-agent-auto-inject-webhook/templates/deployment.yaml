@@ -32,7 +32,7 @@ spec:
         - -annotation-prefix
         - {{ .Values.flags.annotationPrefix }}
         - -target-vault-address
-        - {{ default .Values.flags.targetVaultAddress (printf "https://vault.%s.svc:8200" .Release.Namespace) }}
+        - {{ .Values.flags.targetVaultAddress | default (printf "https://vault.%s:8200" .Release.Namespace) }}
         - -kubernetes-auth-path
         - {{ .Values.flags.kubernetesAuthPath }}
         - -default-config-map-name
