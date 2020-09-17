@@ -18,7 +18,7 @@ Vault agent auto-inject webhook
 | flags.annotationPrefix | string | `"vault.patoarvizu.dev"` | The value to be set on the `-annotation-prefix` flag. |
 | flags.caCertSecretName | string | `"vault-tls"` | The value to be set on the `-ca-cert-secret-name` flag. |
 | flags.defaultConfigMapName | string | `"vault-agent-config"` | The value to be set on the `-default-config-map-name` flag. |
-| flags.kubernetesAuthPath | string | `"auth/kubernetes/login"` | The value to be set on the `-kubernetes-auth-path` flag. |
+| flags.kubernetesAuthPath | string | `"auth/kubernetes"` | The value to be set on the `-kubernetes-auth-path` flag. |
 | flags.mountCACertSecret | bool | `true` | The value to be set on the `-mount-ca-cert-secret` flag. |
 | flags.resources.limits.cpu | string | `"100m"` | The value to be set on the `-cpu-limit` flag. |
 | flags.resources.limits.memory | string | `"256Mi"` | The value to be set on the `-memory-limit` flag. |
