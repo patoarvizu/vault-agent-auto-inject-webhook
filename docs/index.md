@@ -8,6 +8,7 @@ Vault agent auto-inject webhook
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| affinity | string | `nil` | Affinity/anti-affinity rules for pod scheduling according to the [documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity). This map will be set as is on the Deployment object. |
 | caBundle | string | `"Cg=="` | The base64-encoded public CA certificate to be set on the `MutatingWebhookConfiguration`. Note that it defaults to `Cg==` which is a base64-encoded empty string. If this value is not automatically set by cert-manager, or some other mutating webhook, this should be set explicitly. |
 | certManager.apiVersion | string | `"cert-manager.io/v1alpha2"` | The `apiVersion` of the `Certificate` object created by the chart. It depends on the versions made available by the specific cert-manager running on the cluster. |
 | certManager.duration | string | `"2160h"` | The value to be set directly on the `duration` field of the `Certificate`. |
@@ -38,6 +39,7 @@ Vault agent auto-inject webhook
 | podDisruptionBudget.enable | bool | `true` | Create a `PodDisruptionBudget` object to control replication availability. You can find more info about disruption budgets in Kubernetes [here](https://kubernetes.io/docs/tasks/run-application/configure-pdb/).  |
 | prometheusMonitoring.enable | bool | `true` | Create the `Service` and `ServiceMonitor` objects to enable Prometheus monitoring on the webhook. |
 | replicas | int | `3` | The number of replicas of the webhook to run. |
+| resources | string | `nil` | Map of cpu/memory resources and limits, to be set on the webhook |
 | serviceAccount.name | string | `"vault-agent-webhook"` | The name of the `ServiceAccount` to be created. |
 | tls.mountPath | string | `"/tls"` | The path where the CA cert from the secret should be mounted. |
 | tls.secretName | string | `"vault-agent-webhook"` | The name of the `Secret` from which the CA cert will be mounted. This value is ignored if `.certManager.injectSecret` is set to `true`. |
