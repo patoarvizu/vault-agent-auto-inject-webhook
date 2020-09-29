@@ -3,7 +3,6 @@ apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
 metadata:
   name: vault-agent-webhook
-  namespace: {{ .Release.Namespace }}
   labels:
     app: vault-agent-webhook
     vault-control-plane: "true"

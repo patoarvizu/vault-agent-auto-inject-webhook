@@ -100,3 +100,9 @@ hpa:
 prometheusMonitoring:
   # prometheusMonitoring.enable -- Create the `Service` and `ServiceMonitor` objects to enable Prometheus monitoring on the webhook.
   enable: true
+# affinity -- Affinity/anti-affinity rules for pod scheduling according to the [documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity).
+# This map will be set as is on the Deployment object.
+affinity:
+
+# resources -- Map of cpu/memory resources and limits, to be set on the webhook
+resources:

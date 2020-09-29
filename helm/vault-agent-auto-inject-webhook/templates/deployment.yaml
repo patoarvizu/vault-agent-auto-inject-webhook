@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vault-agent-webhook
-  namespace: {{ .Release.Namespace }}
 spec:
   {{- if not .Values.hpa.enable }}
   replicas: {{ .Values.replicas }}
@@ -15,6 +14,9 @@ spec:
       labels:
         app: vault-agent-webhook
     spec:
+      {{- if .Values.affinity }}
+      affinity: {{ toYaml .Values.affinity | nindent 10 }}
+      {{- end }}
       serviceAccountName: {{ .Values.serviceAccount.name }}
       containers:
       - name: vault-agent-webhook
@@ -47,6 +49,9 @@ spec:
         - {{ .Values.flags.resources.limits.memory }}
         {{- if .Values.flags.mountCACertSecret }}
         - -mount-ca-cert-secret
+        {{- end }}
+        {{- if .Values.resources }}
+        resources: {{ toYaml .Values.resources | nindent 10 }}
         {{- end }}
         ports:
         - name: https
