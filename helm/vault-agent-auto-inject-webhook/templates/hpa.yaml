@@ -3,7 +3,6 @@ apiVersion: {{ .Values.hpa.apiVersion }}
 kind: HorizontalPodAutoscaler
 metadata:
   name: vault-agent-webhook
-  namespace: {{ .Release.Namespace }}
 spec:
   minReplicas: {{ .Values.hpa.minReplicas }}
   maxReplicas: {{ .Values.hpa.maxReplicas }}

@@ -3,7 +3,6 @@ apiVersion: {{ .Values.certManager.apiVersion }}
 kind: Certificate
 metadata:
   name: vault-agent-webhook
-  namespace: {{ .Release.Namespace }}
 spec:
   secretName: vault-agent-webhook
   duration: {{ .Values.certManager.duration }}
