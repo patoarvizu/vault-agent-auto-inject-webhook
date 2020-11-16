@@ -103,6 +103,7 @@ Flag | Description | Default
 `-tls-key-file` | TLS key file |
 `-annotation-prefix` | Prefix of the annotations the webhook will process | `vault.patoarvizu.dev`
 `-target-vault-address` | Address of remote Vault API | `https://vault:8200`
+`-gomplate-image` | The full name (repository and tag) of the gomplate image for the init container | `hairyhenderson/gomplate:v3`
 `-kubernetes-auth-path` | Path to Vault Kubernetes auth endpoint | `auth/kubernetes`
 `-vault-image-version` | Tag on the 'vault' Docker image to inject with the sidecar | `1.3.0`
 `-default-config-map-name` | The name of the ConfigMap to be used for the Vault agent configuration by default, unless overwritten by annotation | `vault-agent-config`

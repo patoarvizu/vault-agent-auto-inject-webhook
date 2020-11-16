@@ -48,6 +48,7 @@ type webhookCfg struct {
 	memoryLimit          string
 	mountCACertSecret    bool
 	caCertSecretName     string
+	gomplateImage        string
 }
 
 var cfg = &webhookCfg{}
@@ -167,7 +168,7 @@ func injectVaultSidecar(_ context.Context, obj metav1.Object) (bool, error) {
 
 	pod.Spec.InitContainers = append(pod.Spec.InitContainers, corev1.Container{
 		Name:  "config-template",
-		Image: "hairyhenderson/gomplate:v3",
+		Image: cfg.gomplateImage,
 		Command: []string{
 			"/gomplate",
 			"--file",
@@ -280,6 +281,7 @@ func main() {
 	fl.StringVar(&cfg.targetVaultAddress, "target-vault-address", "https://vault:8200", "Address of remote Vault API")
 	fl.StringVar(&cfg.kubernetesAuthPath, "kubernetes-auth-path", "auth/kubernetes", "Path to Vault Kubernetes auth endpoint")
 	fl.StringVar(&cfg.vaultImageVersion, "vault-image-version", "1.3.0", "Tag on the 'vault' Docker image to inject with the sidecar")
+	fl.StringVar(&cfg.gomplateImage, "gomplate-image", "hairyhenderson/gomplate:v3", "The full name (repository and tag) of the gomplate image for the init container")
 	fl.StringVar(&cfg.defaultConfigMapName, "default-config-map-name", "vault-agent-config", "The name of the ConfigMap to be used for the Vault agent configuration by default, unless overwritten by annotation")
 	fl.BoolVar(&cfg.mountCACertSecret, "mount-ca-cert-secret", false, "Indicate if the Secret indicated by the -ca-cert-secret-name flag should be mounted on the Vault agent container")
 	fl.StringVar(&cfg.caCertSecretName, "ca-cert-secret-name", "vault-tls", "The name of the secret in the target namespace to mount and use as a CA cert")

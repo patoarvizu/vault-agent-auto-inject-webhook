@@ -1,6 +1,6 @@
 # vault-agent-auto-inject-webhook
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
+![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square)
 
 Vault agent auto-inject webhook
 
@@ -19,6 +19,7 @@ Vault agent auto-inject webhook
 | flags.annotationPrefix | string | `"vault.patoarvizu.dev"` | The value to be set on the `-annotation-prefix` flag. |
 | flags.caCertSecretName | string | `"vault-tls"` | The value to be set on the `-ca-cert-secret-name` flag. |
 | flags.defaultConfigMapName | string | `"vault-agent-config"` | The value to be set on the `-default-config-map-name` flag. |
+| flags.gomplateImage | string | `"hairyhenderson/gomplate:v3"` | The value to be set to the `-gomplate-image` flag. |
 | flags.kubernetesAuthPath | string | `"auth/kubernetes"` | The value to be set on the `-kubernetes-auth-path` flag. |
 | flags.mountCACertSecret | bool | `true` | The value to be set on the `-mount-ca-cert-secret` flag. |
 | flags.resources.limits.cpu | string | `"100m"` | The value to be set on the `-cpu-limit` flag. |
