@@ -23,6 +23,8 @@ flags:
   # flags.targetVaultAddress -- The value to be set on the `-target-vault-address` flag.
   # If not specified, it will default to https://vault.{{ .Release.Namespace }}:8200.
   targetVaultAddress:
+  # flags.gomplateImage -- The value to be set to the `-gomplate-image` flag.
+  gomplateImage: hairyhenderson/gomplate:v3
   # flags.kubernetesAuthPath -- The value to be set on the `-kubernetes-auth-path` flag.
   kubernetesAuthPath: auth/kubernetes
   # flags.vaultImageVersion -- The value to be set on the `-vault-image-version` flag.

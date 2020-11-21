@@ -35,6 +35,8 @@ spec:
         - {{ .Values.flags.annotationPrefix }}
         - -target-vault-address
         - {{ .Values.flags.targetVaultAddress | default (printf "https://vault.%s:8200" .Release.Namespace) }}
+        - -gomplate-image
+        - {{ .Values.flags.gomplateImage }}
         - -kubernetes-auth-path
         - {{ .Values.flags.kubernetesAuthPath }}
         - -default-config-map-name

@@ -62,7 +62,7 @@ jobs:
             kubectl rollout status -n cert-manager deployment/cert-manager-webhook -w
             kubectl apply -f https://raw.githubusercontent.com/patoarvizu/common-manifests/master/cert-manager/cluster-issuer.yaml
             kubectl create ns vault
-            helm install vault-agent-webhook helm/vault-agent-auto-inject-webhook/ -n vault --set prometheusMonitoring.enable=false --set replicas=1
+            helm install vault-agent-webhook helm/vault-agent-auto-inject-webhook/ -n vault --set prometheusMonitoring.enable=false --set replicas=1 --set imageVersion=latest
             while [ "$(kubectl -n vault get deployment vault-agent-webhook -o jsonpath={.status.readyReplicas})" != "1" ]; do
               sleep 1
             done
