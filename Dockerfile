@@ -8,7 +8,7 @@ WORKDIR /go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook/
 
 RUN CGO_ENABLED=0 GOOS=linux GOARM=$(if [ "$TARGETVARIANT" = "v7" ]; then echo "7"; fi) GOARCH=$TARGETARCH go build -o /vault-agent-auto-inject-webhook /go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook/cmd/webhook.go
 
-FROM alpine:3.12.0
+FROM gcr.io/distroless/static:nonroot-amd64
 
 ARG GIT_COMMIT="unspecified"
 LABEL GIT_COMMIT=$GIT_COMMIT
@@ -24,8 +24,6 @@ LABEL AUTHOR_EMAIL=$AUTHOR_EMAIL
 
 ARG SIGNATURE_KEY="undefined"
 LABEL SIGNATURE_KEY=$SIGNATURE_KEY
-
-RUN apk update && apk add ca-certificates
 
 COPY --from=builder /vault-agent-auto-inject-webhook /
 
