@@ -1,12 +1,16 @@
-FROM golang:1.12 as builder
+FROM golang:1.16 as builder
 ARG TARGETARCH
 ARG TARGETVARIANT
 
-COPY . /go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook/
+WORKDIR /workspace
 
-WORKDIR /go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook/
+COPY go.mod go.mod
+COPY go.sum go.sum
+RUN go mod download
 
-RUN CGO_ENABLED=0 GOOS=linux GOARM=$(if [ "$TARGETVARIANT" = "v7" ]; then echo "7"; fi) GOARCH=$TARGETARCH go build -o /vault-agent-auto-inject-webhook /go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook/cmd/webhook.go
+COPY cmd/webhook.go cmd/webhook.go
+
+RUN CGO_ENABLED=0 GOOS=linux GOARM=$(if [ "$TARGETVARIANT" = "v7" ]; then echo "7"; fi) GOARCH=$TARGETARCH go build -o vault-agent-auto-inject-webhook cmd/webhook.go
 
 FROM gcr.io/distroless/static:nonroot-amd64
 
@@ -25,6 +29,6 @@ LABEL AUTHOR_EMAIL=$AUTHOR_EMAIL
 ARG SIGNATURE_KEY="undefined"
 LABEL SIGNATURE_KEY=$SIGNATURE_KEY
 
-COPY --from=builder /vault-agent-auto-inject-webhook /
+COPY --from=builder /workspace/vault-agent-auto-inject-webhook /
 
 CMD /vault-agent-auto-inject-webhook
