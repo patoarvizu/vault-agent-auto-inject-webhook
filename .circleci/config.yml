@@ -50,7 +50,6 @@ jobs:
     - run:
         name: Build image
         command: |
-          go mod vendor
           docker build -t patoarvizu/vault-agent-auto-inject-webhook:latest .
     - snyk/scan:
         docker-image-name: patoarvizu/vault-agent-auto-inject-webhook:latest
