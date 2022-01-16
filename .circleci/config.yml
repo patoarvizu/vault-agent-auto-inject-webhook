@@ -3,128 +3,323 @@ version: 2.1
 orbs:
   snyk: snyk/snyk@0.0.8
 
-jobs:
-  build:
+executors:
+  vm:
     machine:
-        enabled: true
-        image: ubuntu-1604:202007-01
+      image: ubuntu-2004:202111-02
+    resource_class: large
     environment:
       GOLANG_VERSION: 1.12.10
       NOTARY_VERSION: 0.6.1
+      KUBECTL_VERSION: 1.21.5
+      K3D_VERSION: 4.4.8
       GOPATH: /home/circleci/go
       GO111MODULE: "on"
       DOCKER_CLI_EXPERIMENTAL: enabled
     working_directory: /home/circleci/go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook
+  vm-arm:
+    machine:
+      image: ubuntu-2004:202111-02
+    resource_class: arm.medium
+    environment:
+      GOLANG_VERSION: 1.12.10
+      NOTARY_VERSION: 0.6.1
+      KUBECTL_VERSION: 1.21.5
+      K3D_VERSION: 4.4.8
+      GOPATH: /home/circleci/go
+      GO111MODULE: "on"
+      DOCKER_CLI_EXPERIMENTAL: enabled
+    working_directory: /home/circleci/go/src/github.com/patoarvizu/vault-agent-auto-inject-webhook
+
+jobs:
+  test:
+    executor: vm
     steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - vault-agent-auto-inject-webhook-golang-cache-{{ checksum "go.sum" }}
-      - run:
-          name: Install golang
-          command: |
-            sudo rm -rf /usr/local/go
-            curl -Lo go.linux-amd64.tar.gz "https://dl.google.com/go/go${GOLANG_VERSION}.linux-amd64.tar.gz"
-            sudo tar -C /usr/local -xzf go.linux-amd64.tar.gz
-            mkdir -p ${HOME}/go/bin
-            echo 'export PATH="$GOPATH/bin:$PATH"' >> "${BASH_ENV}"
-      - run:
-          name: Install kubectl
-          command: |
-            curl -Lo kubectl "https://storage.googleapis.com/kubernetes-release/release/v1.12.0/bin/linux/amd64/kubectl"
-            chmod +x kubectl
-            sudo mv kubectl /usr/local/bin/
-            mkdir -p "${HOME}/.kube"
-            touch "${HOME}/.kube/config"
-      - run:
-          name: Install k3d
-          command: |
-            wget -q -O - https://raw.githubusercontent.com/rancher/k3d/main/install.sh | TAG=v3.0.0 bash
-      - run:
-          name: Install Helm
-          command: |
-            wget https://get.helm.sh/helm-v3.3.1-linux-amd64.tar.gz
-            tar -zxvf helm-v3.3.1-linux-amd64.tar.gz
-            chmod +x linux-amd64/helm
-            sudo mv linux-amd64/helm /usr/local/bin/
-      - run:
-          name: Build image
-          command: |
-            go mod vendor
-            docker build -t patoarvizu/vault-agent-auto-inject-webhook:latest .
-      - run:
-          name: Run tests
-          command: |
-            export KUBECONFIG=~/.k3d/k3s-default-config
-            k3d cluster create --image rancher/k3s:v1.0.0 --wait
-            k3d image import patoarvizu/vault-agent-auto-inject-webhook:latest
-            kubectl apply -f https://raw.githubusercontent.com/patoarvizu/common-manifests/master/cert-manager/cert-manager-v0.14.1.yaml
-            kubectl rollout status -n cert-manager deployment/cert-manager-webhook -w
-            kubectl apply -f https://raw.githubusercontent.com/patoarvizu/common-manifests/master/cert-manager/cluster-issuer.yaml
-            kubectl create ns vault
-            helm install vault-agent-webhook helm/vault-agent-auto-inject-webhook/ -n vault --set prometheusMonitoring.enable=false --set replicas=1 --set imageVersion=latest
-            while [ "$(kubectl -n vault get deployment vault-agent-webhook -o jsonpath={.status.readyReplicas})" != "1" ]; do
-              sleep 1
-            done
-            kubectl apply -f test/test-app.yaml
-            go test github.com/patoarvizu/vault-agent-auto-inject-webhook/cmd -count=1 -v
-      - run:
-          name: Install notary
-          command: |
-            curl -L https://github.com/theupdateframework/notary/releases/download/v${NOTARY_VERSION}/notary-Linux-amd64 -o notary
-            chmod +x notary
-            sudo mv notary /usr/local/bin
-      - snyk/scan:
-          docker-image-name: patoarvizu/vault-agent-auto-inject-webhook:latest
-          fail-on-issues: true
-          project: patoarvizu/vault-agent-auto-inject-webhook
-          severity-threshold: low
-      - run:
-          name: Build webhook
-          command: |
-            sudo apt-get update
-            sudo apt-get install qemu-user -y
-            docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-            docker buildx create --name cci-builder --use
-            docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
-            echo $ENCODED_NOTARY_ROLE_KEY | base64 -d > ${HOME}/vault-agent-auto-inject-webhook-circleci.key
-            export NOTARY_DELEGATION_PASSPHRASE=$NOTARY_ROLE_PASSPHRASE
-            notary -s https://notary.docker.io -d ~/.docker/trust key import ${HOME}/vault-agent-auto-inject-webhook-circleci.key --role vault-agent-auto-inject-webhook-circleci
-            export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$NOTARY_DELEGATION_PASSPHRASE
-            DOCKER_BUILD_ARGS="--build-arg GIT_COMMIT=$CIRCLE_SHA1 --build-arg GIT_TAG=$CIRCLE_TAG --build-arg COMMIT_TIMESTAMP=$(git log -1 --format=%at) --build-arg AUTHOR_EMAIL=$(git log -1 --format=%ae) --build-arg SIGNATURE_KEY=$(git log -1 --format=%GK)"
-            VERSION=${CIRCLE_TAG:-latest}
-            docker buildx build --progress=plain --platform=linux/amd64 --load $DOCKER_BUILD_ARGS -t patoarvizu/vault-agent-auto-inject-webhook:latest-amd64 -t patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-amd64 -t patoarvizu/vault-agent-auto-inject-webhook:$VERSION-amd64 .
-            docker buildx build --progress=plain --platform=linux/arm64 --load $DOCKER_BUILD_ARGS -t patoarvizu/vault-agent-auto-inject-webhook:latest-arm64 -t patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-arm64 -t patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm64 .
-            docker buildx build --progress=plain --platform=linux/arm/v7 --load $DOCKER_BUILD_ARGS -t patoarvizu/vault-agent-auto-inject-webhook:latest-arm7 -t patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-arm7 -t patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm7 .
-            export DOCKER_CONTENT_TRUST=1
-            docker push patoarvizu/vault-agent-auto-inject-webhook:latest-amd64
-            docker push patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-amd64
-            docker push patoarvizu/vault-agent-auto-inject-webhook:$VERSION-amd64
-            docker push patoarvizu/vault-agent-auto-inject-webhook:latest-arm64
-            docker push patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-arm64
-            docker push patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm64
-            docker push patoarvizu/vault-agent-auto-inject-webhook:latest-arm7
-            docker push patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-arm7
-            docker push patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm7
-            docker buildx build --progress=plain --platform=linux/amd64,linux/arm64,linux/arm/v7 --push $OPERATOR_BUILD_ARGS . -t patoarvizu/vault-agent-auto-inject-webhook:latest -t patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1 -t patoarvizu/vault-agent-auto-inject-webhook:$VERSION
-            DIGEST=$(docker buildx imagetools inspect patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1 | grep Digest | cut -d':' -f3)
-            LENGTH=$(( $(docker buildx imagetools inspect patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1 --raw | wc -c) - 1 ))
-            export NOTARY_AUTH=$(echo $DOCKER_HUB_USER:$DOCKER_HUB_ACCESS_TOKEN | base64)
-            notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook latest $LENGTH --sha256 $DIGEST -r targets/releases
-            notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook $CIRCLE_SHA1 $LENGTH --sha256 $DIGEST -r targets/releases
-            notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook $VERSION $LENGTH --sha256 $DIGEST -r targets/releases
-          no_output_timeout: 30m
-      - save_cache:
-          key: vault-agent-auto-inject-webhook-golang-cache-{{ checksum "go.sum" }}
-          paths:
-            - /home/circleci/go/pkg/mod/cache
+    - checkout
+    - restore_cache:
+        keys:
+          - vault-agent-auto-inject-webhook-golang-cache-{{ checksum "go.sum" }}
+    - run:
+        name: Install golang
+        command: |
+          sudo rm -rf /usr/local/go
+          curl -Lo go.linux-amd64.tar.gz "https://dl.google.com/go/go${GOLANG_VERSION}.linux-amd64.tar.gz"
+          sudo tar -C /usr/local -xzf go.linux-amd64.tar.gz
+          mkdir -p ${HOME}/go/bin
+          echo 'export PATH="$GOPATH/bin:$PATH"' >> "${BASH_ENV}"
+    - run:
+        name: Build image
+        command: |
+          go mod vendor
+          docker build -t patoarvizu/vault-agent-auto-inject-webhook:latest .
+    - snyk/scan:
+        docker-image-name: patoarvizu/vault-agent-auto-inject-webhook:latest
+        fail-on-issues: true
+        project: patoarvizu/vault-agent-auto-inject-webhook
+        severity-threshold: low
+    - run:
+        name: Install kubectl
+        command: |
+          curl -Lo kubectl "https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          mkdir -p "${HOME}/.kube"
+          touch "${HOME}/.kube/config"
+    - run:
+        name: Install k3d
+        command: |
+          wget -q -O - https://raw.githubusercontent.com/rancher/k3d/main/install.sh | TAG=v${K3D_VERSION} bash
+    - run:
+        name: Install Helm
+        command: |
+          wget https://get.helm.sh/helm-v3.3.1-linux-amd64.tar.gz
+          tar -zxvf helm-v3.3.1-linux-amd64.tar.gz
+          chmod +x linux-amd64/helm
+          sudo mv linux-amd64/helm /usr/local/bin/
+    - run:
+        name: Run tests
+        command: |
+          export KUBECONFIG=~/.k3d/k3s-default-config
+          k3d cluster create --image rancher/k3s:v1.0.0 --wait
+          k3d image import patoarvizu/vault-agent-auto-inject-webhook:latest
+          kubectl apply -f https://raw.githubusercontent.com/patoarvizu/common-manifests/master/cert-manager/cert-manager-v0.14.1.yaml
+          kubectl rollout status -n cert-manager deployment/cert-manager-webhook -w
+          kubectl apply -f https://raw.githubusercontent.com/patoarvizu/common-manifests/master/cert-manager/cluster-issuer.yaml
+          kubectl create ns vault
+          helm install vault-agent-webhook helm/vault-agent-auto-inject-webhook/ -n vault --set prometheusMonitoring.enable=false --set replicas=1 --set imageVersion=latest
+          while [ "$(kubectl -n vault get deployment vault-agent-webhook -o jsonpath={.status.readyReplicas})" != "1" ]; do
+            sleep 1
+          done
+          kubectl apply -f test/test-app.yaml
+          go test github.com/patoarvizu/vault-agent-auto-inject-webhook/cmd -count=1 -v
+    - save_cache:
+        key: vault-agent-auto-inject-webhook-golang-cache-{{ checksum "go.sum" }}
+        paths:
+          - /home/circleci/go/pkg/mod/cache
+
+  build-and-push-amd64-image:
+    executor: vm
+    steps:
+    - checkout
+    - run:
+        name: Install notary
+        command: |
+          curl -L https://github.com/theupdateframework/notary/releases/download/v${NOTARY_VERSION}/notary-Linux-amd64 -o notary
+          chmod +x notary
+          sudo mv notary /usr/local/bin
+    - run:
+        name: Log in to Docker Hub
+        command: |
+          docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
+    - run:
+        name: Build and push amd64 image
+        command: |
+          docker buildx create --name cci-builder --use
+          echo $ENCODED_NOTARY_ROLE_KEY | base64 -d > ${HOME}/vault-agent-auto-inject-webhook-circleci.key
+          export NOTARY_DELEGATION_PASSPHRASE=$NOTARY_ROLE_PASSPHRASE
+          notary -s https://notary.docker.io -d ~/.docker/trust key import ${HOME}/vault-agent-auto-inject-webhook-circleci.key --role vault-agent-auto-inject-webhook-circleci
+          export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$NOTARY_DELEGATION_PASSPHRASE
+          OPERATOR_BUILD_ARGS="--build-arg GIT_COMMIT=$CIRCLE_SHA1 --build-arg GIT_TAG=$CIRCLE_TAG --build-arg COMMIT_TIMESTAMP=$(git log -1 --format=%at) --build-arg AUTHOR_EMAIL=$(git log -1 --format=%ae) --build-arg SIGNATURE_KEY=$(git log -1 --format=%GK)"
+          export DOCKER_CONTENT_TRUST=1
+          VERSION=${CIRCLE_TAG:-latest}
+          docker buildx build --progress=plain --platform=linux/amd64 --load $OPERATOR_BUILD_ARGS . -t patoarvizu/vault-agent-auto-inject-webhook:latest-amd64 -t patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-amd64 -t patoarvizu/vault-agent-auto-inject-webhook:$VERSION-amd64
+          docker push patoarvizu/vault-agent-auto-inject-webhook:latest-amd64
+          docker push patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-amd64
+          docker push patoarvizu/vault-agent-auto-inject-webhook:$VERSION-amd64
+
+  build-arm64-image:
+    executor: vm-arm
+    steps:
+    - checkout
+    - run:
+        name: Build arm64 image
+        command: |
+          docker buildx create --name cci-builder --use
+          OPERATOR_BUILD_ARGS="--build-arg GIT_COMMIT=$CIRCLE_SHA1 --build-arg GIT_TAG=$CIRCLE_TAG --build-arg COMMIT_TIMESTAMP=$(git log -1 --format=%at) --build-arg AUTHOR_EMAIL=$(git log -1 --format=%ae) --build-arg SIGNATURE_KEY=$(git log -1 --format=%GK)"
+          docker buildx build --progress=plain --platform=linux/arm64 --cache-to=type=local,dest=/tmp/latest-arm64-cache,mode=max $OPERATOR_BUILD_ARGS . -t patoarvizu/vault-agent-auto-inject-webhook:latest-arm64
+    - persist_to_workspace:
+        root: /tmp/
+        paths:
+        - latest-arm64-cache
+
+  push-arm64-image:
+    executor: vm
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/
+    - run:
+        name: Install notary
+        command: |
+          curl -L https://github.com/theupdateframework/notary/releases/download/v${NOTARY_VERSION}/notary-Linux-amd64 -o notary
+          chmod +x notary
+          sudo mv notary /usr/local/bin
+    - run:
+        name: Log in to Docker Hub
+        command: |
+          docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
+    - run:
+        name: Sign and push arm64 image
+        command: |
+          sudo apt-get update
+          sudo apt-get install qemu-user -y
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          docker buildx create --name cci-builder --use
+          echo $ENCODED_NOTARY_ROLE_KEY | base64 -d > ${HOME}/vault-agent-auto-inject-webhook-circleci.key
+          export NOTARY_DELEGATION_PASSPHRASE=$NOTARY_ROLE_PASSPHRASE
+          notary -s https://notary.docker.io -d ~/.docker/trust key import ${HOME}/vault-agent-auto-inject-webhook-circleci.key --role vault-agent-auto-inject-webhook-circleci
+          export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$NOTARY_DELEGATION_PASSPHRASE
+          OPERATOR_BUILD_ARGS="--build-arg GIT_COMMIT=$CIRCLE_SHA1 --build-arg GIT_TAG=$CIRCLE_TAG --build-arg COMMIT_TIMESTAMP=$(git log -1 --format=%at) --build-arg AUTHOR_EMAIL=$(git log -1 --format=%ae) --build-arg SIGNATURE_KEY=$(git log -1 --format=%GK)"
+          export DOCKER_CONTENT_TRUST=1
+          VERSION=${CIRCLE_TAG:-latest}
+          docker buildx build --progress=plain --platform=linux/arm64 --cache-from=type=local,src=/tmp/latest-arm64-cache --load $OPERATOR_BUILD_ARGS . -t patoarvizu/vault-agent-auto-inject-webhook:latest-arm64
+          docker tag patoarvizu/vault-agent-auto-inject-webhook:latest-arm64 patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-arm64
+          docker tag patoarvizu/vault-agent-auto-inject-webhook:latest-arm64 patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm64
+          docker push patoarvizu/vault-agent-auto-inject-webhook:latest-arm64
+          docker push patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-arm64
+          docker push patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm64
+        no_output_timeout: 60m
+
+  build-arm7-image:
+    executor: vm-arm
+    steps:
+    - checkout
+    - run:
+        name: Build arm7 image
+        command: |
+          docker buildx create --name cci-builder --use
+          OPERATOR_BUILD_ARGS="--build-arg GIT_COMMIT=$CIRCLE_SHA1 --build-arg GIT_TAG=$CIRCLE_TAG --build-arg COMMIT_TIMESTAMP=$(git log -1 --format=%at) --build-arg AUTHOR_EMAIL=$(git log -1 --format=%ae) --build-arg SIGNATURE_KEY=$(git log -1 --format=%GK)"
+          docker buildx build --progress=plain --platform=linux/arm/v7 --cache-to=type=local,dest=/tmp/latest-arm7-cache,mode=max $OPERATOR_BUILD_ARGS . -t patoarvizu/vault-agent-auto-inject-webhook:latest-arm7
+    - persist_to_workspace:
+        root: /tmp/
+        paths:
+        - latest-arm7-cache
+
+  push-arm7-image:
+    executor: vm
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/
+    - run:
+        name: Install notary
+        command: |
+          curl -L https://github.com/theupdateframework/notary/releases/download/v${NOTARY_VERSION}/notary-Linux-amd64 -o notary
+          chmod +x notary
+          sudo mv notary /usr/local/bin
+    - run:
+        name: Log in to Docker Hub
+        command: |
+          docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
+    - run:
+        name: Sign and push arm7 image
+        command: |
+          sudo apt-get update
+          sudo apt-get install qemu-user -y
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          docker buildx create --name cci-builder --use
+          echo $ENCODED_NOTARY_ROLE_KEY | base64 -d > ${HOME}/vault-agent-auto-inject-webhook-circleci.key
+          export NOTARY_DELEGATION_PASSPHRASE=$NOTARY_ROLE_PASSPHRASE
+          notary -s https://notary.docker.io -d ~/.docker/trust key import ${HOME}/vault-agent-auto-inject-webhook-circleci.key --role vault-agent-auto-inject-webhook-circleci
+          export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$NOTARY_DELEGATION_PASSPHRASE
+          OPERATOR_BUILD_ARGS="--build-arg GIT_COMMIT=$CIRCLE_SHA1 --build-arg GIT_TAG=$CIRCLE_TAG --build-arg COMMIT_TIMESTAMP=$(git log -1 --format=%at) --build-arg AUTHOR_EMAIL=$(git log -1 --format=%ae) --build-arg SIGNATURE_KEY=$(git log -1 --format=%GK)"
+          export DOCKER_CONTENT_TRUST=1
+          VERSION=${CIRCLE_TAG:-latest}
+          docker buildx build --progress=plain --platform=linux/arm/v7 --cache-from=type=local,src=/tmp/latest-arm7-cache --load $OPERATOR_BUILD_ARGS . -t patoarvizu/vault-agent-auto-inject-webhook:latest-arm7
+          docker tag patoarvizu/vault-agent-auto-inject-webhook:latest-arm7 patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-arm7
+          docker tag patoarvizu/vault-agent-auto-inject-webhook:latest-arm7 patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm7
+          docker push patoarvizu/vault-agent-auto-inject-webhook:latest-arm7
+          docker push patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-arm7
+          docker push patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm7
+        no_output_timeout: 60m
+
+  push-combined-image:
+    executor: vm
+    steps:
+    - checkout
+    - run:
+        name: Install notary
+        command: |
+          curl -L https://github.com/theupdateframework/notary/releases/download/v${NOTARY_VERSION}/notary-Linux-amd64 -o notary
+          chmod +x notary
+          sudo mv notary /usr/local/bin
+    - run:
+        name: Log in to Docker Hub
+        command: |
+          docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
+    - run:
+        name: Sign and push combined image
+        command: |
+          docker buildx create --name cci-builder --use
+          echo $ENCODED_NOTARY_ROLE_KEY | base64 -d > ${HOME}/vault-agent-auto-inject-webhook-circleci.key
+          export NOTARY_DELEGATION_PASSPHRASE=$NOTARY_ROLE_PASSPHRASE
+          notary -s https://notary.docker.io -d ~/.docker/trust key import ${HOME}/vault-agent-auto-inject-webhook-circleci.key --role vault-agent-auto-inject-webhook-circleci
+          export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$NOTARY_DELEGATION_PASSPHRASE
+          export DOCKER_CONTENT_TRUST=1
+          VERSION=${CIRCLE_TAG:-latest}
+          docker manifest create patoarvizu/vault-agent-auto-inject-webhook:latest --amend patoarvizu/vault-agent-auto-inject-webhook:latest-amd64 --amend patoarvizu/vault-agent-auto-inject-webhook:latest-arm64 patoarvizu/vault-agent-auto-inject-webhook:latest-arm7
+          docker manifest push patoarvizu/vault-agent-auto-inject-webhook:latest
+          docker manifest create patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1 --amend patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-amd64 --amend patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-arm64 patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1-arm7
+          docker manifest push patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1
+          docker manifest create patoarvizu/vault-agent-auto-inject-webhook:$VERSION --amend patoarvizu/vault-agent-auto-inject-webhook:$VERSION-amd64 --amend patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm64 patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm7
+          docker manifest push patoarvizu/vault-agent-auto-inject-webhook:$VERSION
+          DIGEST=$(docker buildx imagetools inspect patoarvizu/vault-agent-auto-inject-webhook:latest | grep Digest | cut -d':' -f3)
+          LENGTH=$(( $(docker buildx imagetools inspect patoarvizu/vault-agent-auto-inject-webhook:latest --raw | wc -c) - 1 ))
+          export NOTARY_AUTH=$(echo $DOCKER_HUB_USER:$DOCKER_HUB_ACCESS_TOKEN | base64)
+          notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook latest $LENGTH --sha256 $DIGEST -r targets/releases
+          notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook $CIRCLE_SHA1 $LENGTH --sha256 $DIGEST -r targets/releases
+          notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook $VERSION $LENGTH --sha256 $DIGEST -r targets/releases
 
 workflows:
   version: 2
-  build-webhook:
+  build-operator:
     jobs:
-      - build:
-          context: authentication-tokens
-          filters:
-            tags:
-              only: /^v\d+\.\d+.\d+$/
+    - test:
+        context: authentication-tokens
+        filters:
+          tags:
+            only: /^v\d+\.\d+.\d+$/
+    - build-and-push-amd64-image:
+        requires:
+        - test
+        context: authentication-tokens
+        filters:
+          tags:
+            only: /^v\d+\.\d+.\d+$/
+    - build-arm64-image:
+        requires:
+        - test
+        filters:
+          tags:
+            only: /^v\d+\.\d+.\d+$/
+    - push-arm64-image:
+        requires:
+        - build-arm64-image
+        context: authentication-tokens
+        filters:
+          tags:
+            only: /^v\d+\.\d+.\d+$/
+    - build-arm7-image:
+        requires:
+        - test
+        filters:
+          tags:
+            only: /^v\d+\.\d+.\d+$/
+    - push-arm7-image:
+        requires:
+        - build-arm7-image
+        context: authentication-tokens
+        filters:
+          tags:
+            only: /^v\d+\.\d+.\d+$/
+    - push-combined-image:
+        requires:
+        - build-and-push-amd64-image
+        - push-arm64-image
+        - push-arm7-image
+        context: authentication-tokens
+        filters:
+          branches:
+            ignore: /^.*$/
+          tags:
+            only: /^v\d+\.\d+.\d+$/
