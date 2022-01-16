@@ -29,6 +29,6 @@ LABEL AUTHOR_EMAIL=$AUTHOR_EMAIL
 ARG SIGNATURE_KEY="undefined"
 LABEL SIGNATURE_KEY=$SIGNATURE_KEY
 
-COPY --from=builder /workspace/vault-agent-auto-inject-webhook .
+COPY --from=builder /workspace/vault-agent-auto-inject-webhook /
 
 CMD /vault-agent-auto-inject-webhook
