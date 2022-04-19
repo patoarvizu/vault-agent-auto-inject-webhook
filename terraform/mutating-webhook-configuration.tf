@@ -8,7 +8,7 @@ resource kubernetes_mutating_webhook_configuration_v1 vault_agent_webhook {
   webhook {
     client_config {
       service {
-        name = "vault-agent-webhook"
+        name = kubernetes_service.vault_agent_webhook.metadata[0].name
         namespace = var.create_namespace ? kubernetes_namespace.ns["ns"].metadata[0].name : data.kubernetes_namespace.ns["ns"].metadata[0].name
         path = "/"
       }
