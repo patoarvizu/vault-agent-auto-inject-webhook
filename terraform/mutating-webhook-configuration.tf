@@ -1,7 +1,7 @@
 resource kubernetes_mutating_webhook_configuration_v1 vault_agent_webhook {
   metadata {
     annotations = {
-      "cert-manager.io/inject-ca-from" = format("%s/vault-agent-webhook", var.namespace)
+      "cert-manager.io/inject-ca-from" = format("%s/vault-agent-webhook", var.namespace_name)
     }
     name = "vault-agent-webhook"
   }

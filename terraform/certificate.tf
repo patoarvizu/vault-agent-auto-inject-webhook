@@ -11,8 +11,8 @@ resource kubernetes_manifest certificate_vault_agent_webhook {
       commonName = "vault-agent-webhook"
       dnsNames = [
         "vault-agent-webhook",
-        format("vault-agent-webhook.%s", var.namespace),
-        format("vault-agent-webhook.%s.svc", var.namespace),
+        format("vault-agent-webhook.%s", var.namespace_name),
+        format("vault-agent-webhook.%s.svc", var.namespace_name),
       ]
       duration = format("%s0m0s", var.cert_manager.duration)
       issuerRef = {
