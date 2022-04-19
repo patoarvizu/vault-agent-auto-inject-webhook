@@ -109,35 +109,70 @@ variable cert_manager {
   description = "Object to configure the Certificate object (if one is being created)."
 }
 
-variable flags {
-  type = object({
-    annotation_prefix = string
-    target_vault_address = string
-    gomplate_image = string
-    kubernetes_auth_path = string
-    vault_image_version = string
-    default_config_map_name = string
-    ca_cert_secret_name = string
-    cpu_requests = string
-    memory_requests = string
-    cpu_limits = string
-    memory_limits = string
-  })
-  default = {
-    annotation_prefix = "vault.patoarvizu.dev"
-    target_vault_address = "https://vault:8200"
-    gomplate_image = "hairyhenderson/gomplate:v3"
-    kubernetes_auth_path = "auth/kubernetes"
-    vault_image_version = "1.4.0"
-    default_config_map_name = "vault-agent-config"
-    mount_ca_cert_secret = true
-    ca_cert_secret_name = "vault-tls"
-    cpu_requests = "50m"
-    memory_requests = "128Mi"
-    cpu_limits = "100m"
-    memory_limits = "256Mi"
-  }
-  description = "Set of flags to pass to the webhook workload. **NOTE:** since this is a variable of type object and given the constraints of the Terraform language, if you overwrite one you'll still need to pass the full object."
+variable annotation_prefix {
+  type = string
+  default = "vault.patoarvizu.dev"
+  description = "The value to be passed to the -annotation-prefix flag."
+}
+
+variable target_vault_address {
+  type = string
+  default = "https://vault:8200"
+  description = "The value to be passed to the -target-vault-address flag."
+}
+
+variable gomplate_image {
+  type = string
+  default = "hairyhenderson/gomplate:v3"
+  description = "The value to be passed to the -gomplate-image flag."
+}
+
+variable kubernetes_auth_path {
+  type = string
+  default = "auth/kubernetes"
+  description = "The value to be passed to the -kubernetes-auth-path flag."
+}
+
+variable vault_image_version {
+  type = string
+  default = "1.4.0"
+  description = "The value to be passed to the -vault-image-version flag."
+}
+
+variable default_config_map_name {
+  type = string
+  default = "vault-agent-config"
+  description = "The value to be passed to the -default-config-map-name flag."
+}
+
+variable ca_cert_secret_name {
+  type = string
+  default = "vault-tls"
+  description = "The value to be passed to the -ca-cert-secret-name flag."
+}
+
+variable cpu_request {
+  type = string
+  default = "50m"
+  description = "The value to be passed to the -cpu-request flag."
+}
+
+variable memory_request {
+  type = string
+  default = "128Mi"
+  description = "The value to be passed to the -memory-request flag."
+}
+
+variable cpu_limit {
+  type = string
+  default = "100m"
+  description = "The value to be passed to the -cpu-limit flag."
+}
+
+variable memory_limit {
+  type = string
+  default = "256Mi"
+  description = "The value to be passed to the -memory-limit flag."
 }
 
 variable service_monitor_enable {
