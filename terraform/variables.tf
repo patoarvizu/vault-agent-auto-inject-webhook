@@ -79,8 +79,8 @@ variable cert_manager {
   })
   default = {
     api_version = "cert-manager.io/v1"
-    duration = "2160h0m0s"
-    renew_before = "360h0m0s"
+    duration = "2160h"
+    renew_before = "360h"
     issuer_ref = {
       name = "selfsigning-issuer"
       kind = "ClusterIssuer"

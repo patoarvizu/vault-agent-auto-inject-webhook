@@ -14,12 +14,12 @@ resource kubernetes_manifest certificate_vault_agent_webhook {
         format("vault-agent-webhook.%s", var.namespace),
         format("vault-agent-webhook.%s.svc", var.namespace),
       ]
-      duration = var.cert_manager.duration
+      duration = format("%s0m0s", var.cert_manager.duration)
       issuerRef = {
         kind = var.cert_manager.issuer_ref.kind
         name = var.cert_manager.issuer_ref.name
       }
-      renewBefore = var.cert_manager.renew_before
+      renewBefore = format("%s0m0s", var.cert_manager.renew_before)
       secretName = var.certificate_secret_name
     }
   }
