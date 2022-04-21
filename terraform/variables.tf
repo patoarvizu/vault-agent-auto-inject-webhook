@@ -55,7 +55,7 @@ variable pdb_max_unavaiable {
 
 variable hpa_enable {
   type = bool
-  default = true
+  default = false
   description = "If set to true, a HorizontalPodAutoscaler object will be created."
 }
 
