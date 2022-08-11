@@ -21,6 +21,9 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: vault-agent-webhook
+  {{- if .Values.prometheusMonitoring.serviceMonitor.customLabels }}
+  labels: {{ toYaml .Values.prometheusMonitoring.serviceMonitor.customLabels | nindent 4 }}
+  {{- end }}
 spec:
   endpoints:
   - port: metrics

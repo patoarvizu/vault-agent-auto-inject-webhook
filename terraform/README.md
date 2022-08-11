@@ -59,6 +59,7 @@ No modules.
 | <a name="input_namespace_name"></a> [namespace\_name](#input\_namespace\_name) | The name of the namespace to create or look up. | `string` | `"vault"` | no |
 | <a name="input_pdb_max_unavaiable"></a> [pdb\_max\_unavaiable](#input\_pdb\_max\_unavaiable) | The value of maxUnavailable to set on the PodDisruptionBudget object. | `number` | `0` | no |
 | <a name="input_replicas"></a> [replicas](#input\_replicas) | The number of replicas of the webhook server to run. | `number` | `3` | no |
+| <a name="input_service_monitor_custom_labels"></a> [service\_monitor\_custom\_labels](#input\_service\_monitor\_custom\_labels) | Custom labels to add to the `ServiceMonitor` object. | `map` | `{}` | no |
 | <a name="input_service_monitor_enable"></a> [service\_monitor\_enable](#input\_service\_monitor\_enable) | If true a ServiceMonitor object will be created, and a /metrics endpoint will be exposed. **NOTE:** this requires the Prometheus operator to be running on the target cluster. | `bool` | `true` | no |
 | <a name="input_target_vault_address"></a> [target\_vault\_address](#input\_target\_vault\_address) | The value to be passed to the -target-vault-address flag. | `string` | `"https://vault:8200"` | no |
 | <a name="input_vault_image_version"></a> [vault\_image\_version](#input\_vault\_image\_version) | The value to be passed to the -vault-image-version flag. | `string` | `"1.4.0"` | no |
