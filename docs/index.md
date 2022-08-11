@@ -1,6 +1,6 @@
 # vault-agent-auto-inject-webhook
 
-![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square)
+![Version: 0.2.1](https://img.shields.io/badge/Version-0.2.1-informational?style=flat-square)
 
 Vault agent auto-inject webhook
 
@@ -39,6 +39,7 @@ Vault agent auto-inject webhook
 | podDisruptionBudget.availability.maxUnavailable | int | `0` | The default availability is set to `maxUnavailable: 0` (if `podDisruptionBudget.enable` is `true`). |
 | podDisruptionBudget.enable | bool | `true` | Create a `PodDisruptionBudget` object to control replication availability. You can find more info about disruption budgets in Kubernetes [here](https://kubernetes.io/docs/tasks/run-application/configure-pdb/).  |
 | prometheusMonitoring.enable | bool | `true` | Create the `Service` and `ServiceMonitor` objects to enable Prometheus monitoring on the webhook. |
+| prometheusMonitoring.serviceMonitor.customLabels | string | `nil` | Custom labels to add to the ServiceMonitor object. |
 | replicas | int | `3` | The number of replicas of the webhook to run. |
 | resources | string | `nil` | Map of cpu/memory resources and limits, to be set on the webhook |
 | serviceAccount.name | string | `"vault-agent-webhook"` | The name of the `ServiceAccount` to be created. |

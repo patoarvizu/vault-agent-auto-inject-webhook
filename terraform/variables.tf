@@ -181,6 +181,12 @@ variable service_monitor_enable {
   description = "If true a ServiceMonitor object will be created, and a /metrics endpoint will be exposed. **NOTE:** this requires the Prometheus operator to be running on the target cluster."
 }
 
+variable service_monitor_custom_labels {
+  type = map
+  default = {}
+  description = "Custom labels to add to the `ServiceMonitor` object."
+}
+
 variable webhook_namespace_selector_expressions {
   type = list(object({
     key = string
