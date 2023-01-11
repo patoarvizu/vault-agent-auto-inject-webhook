@@ -1,4 +1,4 @@
 apiVersion: v2
 description: Vault agent auto-inject webhook
 name: vault-agent-auto-inject-webhook
-version: 0.2.1
+version: 0.3.0
