@@ -5,21 +5,20 @@
 
 <!-- TOC -->
 
-- [Vault agent auto-inject webhook](#vault-agent-auto-inject-webhook)
-  - [Intro](#intro)
-    - [Running the webhook](#running-the-webhook)
-    - [Configuring the webhook](#configuring-the-webhook)
-    - [Webhook command-line flags](#webhook-command-line-flags)
-    - [ConfigMap](#configmap)
-    - [Auto-mount CA cert](#auto-mount-ca-cert)
-    - [Init containers](#init-containers)
-    - [Metrics](#metrics)
-    - [Auto-reloading certificate](#auto-reloading-certificate)
-  - [For security nerds](#for-security-nerds)
-    - [Docker images are signed and published to Docker Hub's Notary server](#docker-images-are-signed-and-published-to-docker-hubs-notary-server)
-    - [Docker images are labeled with Git and GPG metadata](#docker-images-are-labeled-with-git-and-gpg-metadata)
-  - [Multi-architecture images](#multi-architecture-images)
-  - [Help wanted!](#help-wanted)
+- [Intro](#intro)
+  - [Running the webhook](#running-the-webhook)
+  - [Configuring the webhook](#configuring-the-webhook)
+  - [Webhook command-line flags](#webhook-command-line-flags)
+  - [ConfigMap](#configmap)
+  - [Auto-mount CA cert](#auto-mount-ca-cert)
+  - [Init containers](#init-containers)
+  - [Metrics](#metrics)
+  - [Auto-reloading certificate](#auto-reloading-certificate)
+- [For security nerds](#for-security-nerds)
+  - [Docker images are signed and published to Docker Hub's Notary server](#docker-images-are-signed-and-published-to-docker-hubs-notary-server)
+  - [Docker images are labeled with Git and GPG metadata](#docker-images-are-labeled-with-git-and-gpg-metadata)
+- [Multi-architecture images](#multi-architecture-images)
+- [Help wanted!](#help-wanted)
 
 <!-- /TOC -->
 
@@ -149,6 +148,8 @@ The server performs a hot reload if the underlying TLS certificate (indicated by
 The way this is achieved is by initially loading the certificate and keeping it in a local cache, then using the [radovskyb/watcher](https://github.com/radovskyb/watcher) library to watch for changes on the file and updating the cached version if the file changes.
 
 ## For security nerds
+
+**NOTE:** Due to technical issues with the Notary client, starting on January 4th 2023 and until further notice new images will NOT be signed. The images will still be built for multi-architecture, and will include the Git and GPG metadata, but they won't pass Docker Content Trust validation if you have it enabled.
 
 ### Docker images are signed and published to Docker Hub's Notary server
 
