@@ -263,12 +263,12 @@ jobs:
           docker manifest push patoarvizu/vault-agent-auto-inject-webhook:$CIRCLE_SHA1
           docker manifest create patoarvizu/vault-agent-auto-inject-webhook:$VERSION --amend patoarvizu/vault-agent-auto-inject-webhook:$VERSION-amd64 --amend patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm64 patoarvizu/vault-agent-auto-inject-webhook:$VERSION-arm7
           docker manifest push patoarvizu/vault-agent-auto-inject-webhook:$VERSION
-          DIGEST=$(docker buildx imagetools inspect patoarvizu/vault-agent-auto-inject-webhook:latest | grep Digest | cut -d':' -f3)
-          LENGTH=$(( $(docker buildx imagetools inspect patoarvizu/vault-agent-auto-inject-webhook:latest --raw | wc -c) - 1 ))
-          export NOTARY_AUTH=$(echo $DOCKER_HUB_USER:$DOCKER_HUB_ACCESS_TOKEN | base64)
-          notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook latest $LENGTH --sha256 $DIGEST -r targets/releases
-          notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook $CIRCLE_SHA1 $LENGTH --sha256 $DIGEST -r targets/releases
-          notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook $VERSION $LENGTH --sha256 $DIGEST -r targets/releases
+          # DIGEST=$(docker buildx imagetools inspect patoarvizu/vault-agent-auto-inject-webhook:latest | grep Digest | cut -d':' -f3)
+          # LENGTH=$(( $(docker buildx imagetools inspect patoarvizu/vault-agent-auto-inject-webhook:latest --raw | wc -c) - 1 ))
+          # export NOTARY_AUTH=$(echo $DOCKER_HUB_USER:$DOCKER_HUB_ACCESS_TOKEN | base64)
+          # notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook latest $LENGTH --sha256 $DIGEST -r targets/releases
+          # notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook $CIRCLE_SHA1 $LENGTH --sha256 $DIGEST -r targets/releases
+          # notary -s https://notary.docker.io -d ~/.docker/trust addhash -p docker.io/patoarvizu/vault-agent-auto-inject-webhook $VERSION $LENGTH --sha256 $DIGEST -r targets/releases
 
 workflows:
   version: 2
