@@ -1,6 +1,6 @@
 # vault-agent-auto-inject-webhook
 
-![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square)
+![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square)
 
 Vault agent auto-inject webhook
 
@@ -10,7 +10,7 @@ Vault agent auto-inject webhook
 |-----|------|---------|-------------|
 | affinity | string | `nil` | Affinity/anti-affinity rules for pod scheduling according to the [documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity). This map will be set as is on the Deployment object. |
 | caBundle | string | `"Cg=="` | The base64-encoded public CA certificate to be set on the `MutatingWebhookConfiguration`. Note that it defaults to `Cg==` which is a base64-encoded empty string. If this value is not automatically set by cert-manager, or some other mutating webhook, this should be set explicitly. |
-| certManager.apiVersion | string | `"cert-manager.io/v1alpha2"` | The `apiVersion` of the `Certificate` object created by the chart. It depends on the versions made available by the specific cert-manager running on the cluster. |
+| certManager.apiVersion | string | `"cert-manager.io/v1"` | The `apiVersion` of the `Certificate` object created by the chart. It depends on the versions made available by the specific cert-manager running on the cluster. |
 | certManager.duration | string | `"2160h"` | The value to be set directly on the `duration` field of the `Certificate`. |
 | certManager.injectSecret | bool | `true` | Enables auto-injection of a certificate managed by [cert-manager](https://github.com/jetstack/cert-manager). |
 | certManager.issuerRef | object | `{"kind":"ClusterIssuer","name":"selfsigning-issuer"}` | The `name` and `kind` of the cert-manager issuer to be used. |
@@ -28,7 +28,7 @@ Vault agent auto-inject webhook
 | flags.resources.requests.memory | string | `"128Mi"` | The value to be set on the `-memory-request` flag. |
 | flags.targetVaultAddress | string | `nil` | The value to be set on the `-target-vault-address` flag. If not specified, it will default to https://vault.{{ .Release.Namespace }}:8200. |
 | flags.vaultImageVersion | string | `"1.4.0"` | The value to be set on the `-vault-image-version` flag. |
-| hpa.apiVersion | string | `"autoscaling/v2beta2"` | The `apiVersion` of the `HorizontalPodAutoscaler` to create. The metrics configuration options vary depending on this value. |
+| hpa.apiVersion | string | `"autoscaling/v2"` | The `apiVersion` of the `HorizontalPodAutoscaler` to create. The metrics configuration options vary depending on this value. |
 | hpa.enable | bool | `false` | Create a `HorizontalPodAutoscaler` object to control dynamic replication of the webhook. If this is set to `false`, all values under `hpa` are ignored. |
 | hpa.maxReplicas | int | `20` | The maximum number of replicas to attempt to maintain at all times. |
 | hpa.metricsScalingConfiguration | list | `[{"resource":{"name":"cpu","target":{"averageUtilization":80,"type":"Utilization"}},"type":"Resource"}]` | The scaling configuration to be injected directly into the `HorizontalPodAutoscaler` object. |
