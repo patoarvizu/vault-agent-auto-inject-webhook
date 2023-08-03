@@ -2,7 +2,15 @@ apiVersion: v1
 entries:
   vault-agent-auto-inject-webhook:
   - apiVersion: v2
-    created: "2023-01-11T17:30:27.849053-05:00"
+    created: "2023-08-03T12:58:27.737292-04:00"
+    description: Vault agent auto-inject webhook
+    digest: 2537172594331510e93527d4e1794d5d9618024e23b9dee48a22fefbd4e37b2e
+    name: vault-agent-auto-inject-webhook
+    urls:
+    - https://patoarvizu.github.io/vault-agent-auto-inject-webhook/vault-agent-auto-inject-webhook-0.4.0.tgz
+    version: 0.4.0
+  - apiVersion: v2
+    created: "2023-08-03T12:58:27.736425-04:00"
     description: Vault agent auto-inject webhook
     digest: 9ab2e642f2e9a27d0f4c90afd1a58880866f8114e9b934ec75373f9a66ae98cf
     name: vault-agent-auto-inject-webhook
@@ -10,7 +18,7 @@ entries:
     - https://patoarvizu.github.io/vault-agent-auto-inject-webhook/vault-agent-auto-inject-webhook-0.3.0.tgz
     version: 0.3.0
   - apiVersion: v2
-    created: "2023-01-11T17:30:27.848513-05:00"
+    created: "2023-08-03T12:58:27.735381-04:00"
     description: Vault agent auto-inject webhook
     digest: e05d7f2eaba69f1800ed78d96e3a6eaa2912982d0a59e391b4a6a6cbbe5204d4
     name: vault-agent-auto-inject-webhook
@@ -18,7 +26,7 @@ entries:
     - https://patoarvizu.github.io/vault-agent-auto-inject-webhook/vault-agent-auto-inject-webhook-0.2.1.tgz
     version: 0.2.1
   - apiVersion: v2
-    created: "2023-01-11T17:30:27.847315-05:00"
+    created: "2023-08-03T12:58:27.734275-04:00"
     description: Vault agent auto-inject webhook
     digest: f0951ec709bfdbf482472242733b39b5f6d5a913437bd46f8b4d9653f6578c85
     name: vault-agent-auto-inject-webhook
@@ -26,7 +34,7 @@ entries:
     - https://patoarvizu.github.io/vault-agent-auto-inject-webhook/vault-agent-auto-inject-webhook-0.2.0.tgz
     version: 0.2.0
   - apiVersion: v2
-    created: "2023-01-11T17:30:27.846132-05:00"
+    created: "2023-08-03T12:58:27.73323-04:00"
     description: Vault agent auto-inject webhook
     digest: 2da09a31eb20a128b60e5dc6761a353bb8ac938e3dbafbce1d2aa3be9c7b44f0
     name: vault-agent-auto-inject-webhook
@@ -34,11 +42,11 @@ entries:
     - https://patoarvizu.github.io/vault-agent-auto-inject-webhook/vault-agent-auto-inject-webhook-0.1.0.tgz
     version: 0.1.0
   - apiVersion: v1
-    created: "2023-01-11T17:30:27.844935-05:00"
+    created: "2023-08-03T12:58:27.732249-04:00"
     description: Vault agent auto-inject webhook
     digest: 77e938e8bce1bb95537e1a070eb0b54677d699f81e464d2ac4bffb6bf5c5af11
     name: vault-agent-auto-inject-webhook
     urls:
     - https://patoarvizu.github.io/vault-agent-auto-inject-webhook/vault-agent-auto-inject-webhook-0.0.0.tgz
     version: 0.0.0
-generated: "2023-01-11T17:30:27.843606-05:00"
+generated: "2023-08-03T12:58:27.729738-04:00"
