@@ -3,7 +3,7 @@ certManager:
   injectSecret: true
   # certManager.apiVersion -- The `apiVersion` of the `Certificate` object created by the chart.
   # It depends on the versions made available by the specific cert-manager running on the cluster.
-  apiVersion: cert-manager.io/v1alpha2
+  apiVersion: cert-manager.io/v1
   # certManager.duration -- The value to be set directly on the `duration` field of the `Certificate`.
   duration: 2160h
   # certManager.renewBefore -- The value to be set directly on the `renewBefore` field of the `Certificate`.
@@ -85,7 +85,7 @@ hpa:
   # hpa.enable -- Create a `HorizontalPodAutoscaler` object to control dynamic replication of the webhook. If this is set to `false`, all values under `hpa` are ignored.
   enable: false
   # hpa.apiVersion -- The `apiVersion` of the `HorizontalPodAutoscaler` to create. The metrics configuration options vary depending on this value.
-  apiVersion: autoscaling/v2beta2
+  apiVersion: autoscaling/v2
   # hpa.minReplicas -- The minimum number of replicas to attempt to maintain at all times.
   minReplicas: 3
   # hpa.maxReplicas -- The maximum number of replicas to attempt to maintain at all times.
